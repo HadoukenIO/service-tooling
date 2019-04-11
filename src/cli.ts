@@ -9,6 +9,7 @@ import {CLIArguments, BuildCommandArgs} from './types';
 import {createProviderZip} from './scripts/createProviderZip';
 import {createRuntimeChannels} from './scripts/createRuntimeChannels';
 import {executeWebpack} from './webpack/executeWebpack';
+import {getProjectConfig} from './utils/getProjectConfig';
 
 /**
  * Start command
@@ -63,6 +64,10 @@ program.command('fix')
     .description('Checks the project for linting issues, and fixes issues wherever possible.')
     .action(fixCommandProcess);
 
+
+program.command('docs')
+    .description('Generates typedoc for the project using the standardized look.')
+    .action(generateTypedoc);
 /**
  * Process CLI commands
  */
@@ -117,5 +122,21 @@ function fixCommandProcess() {
     const eslintCmd = path.resolve('./node_modules/.bin/eslint');
     const eslintConfig = path.resolve('./node_modules/openfin-service-tooling/.eslintrc.json');
     const cmd = `${eslintCmd} src test --ext .ts --ext .tsx --fix --config ${eslintConfig}`;
+    childprocess.execSync(cmd, {stdio: 'inherit'});
+}
+
+
+/**
+ * Generates typedoc
+ */
+function generateTypedoc() {
+    const config = getProjectConfig();
+    const [typedocCmd, themeDir, outDir, tsConfig] = [
+        './node_modules/.bin/typedoc',
+        './node_modules/openfin-service-tooling/typedoc-template',
+        './dist/docs',
+        './src/client/tsconfig.json'
+    ].map(filePath => path.resolve(filePath));
+    const cmd = `${typedocCmd} --name "OpenFin ${config.SERVICE_NAME}" --theme ${themeDir} --out ${outDir} --excludeNotExported --excludePrivate --excludeProtected --hideGenerator --tsconfig ${tsConfig} --readme none`; // eslint-disable-line
     childprocess.execSync(cmd, {stdio: 'inherit'});
 }
