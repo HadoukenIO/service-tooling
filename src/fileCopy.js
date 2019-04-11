@@ -11,6 +11,7 @@ const glob = require('glob');
 [
     './package.json',
     './README.md',
-    ...glob.sync('src/config/**/*', {dot: true})
+    ...glob.sync('src/config/**/*', {dot: true}),
+    ...glob.sync('src/typedoc-template/**/*')
 ].forEach(file => fs.copyFileSync(path.resolve(file), path.resolve('dist', path.basename(file))));
 
