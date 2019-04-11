@@ -1,4 +1,11 @@
-export function parseIntegrationTestRunnerOptions(): {testCommand: string, skipBuild: boolean, debugMode: boolean, runtimeVersion: string|undefined} {
+interface IntegrationTestRunnerOptions {
+    testCommand: string,
+    skipBuild: boolean,
+    debugMode: boolean,
+    runtimeVersion: string|undefined
+}
+
+export function parseIntegrationTestRunnerOptions(): IntegrationTestRunnerOptions {
     const unusedArgs = process.argv.slice(2);
 
     const testFileNames = ['*'];
@@ -45,6 +52,7 @@ Options:
  * Simple command-line parser. Returns the named argument from the list of process arguments.
  *
  * @param {string} name Argument name, including any hyphens
+ * @param {string[]} unusedArgs Remaining arguments to be consumed
  * @param {boolean} hasValue If this argument requires a value. Accepts "--name value" and "--name=value" syntax.
  * @param {any} defaultValue Determines return value, if an argument with the given name doesn't exist. Only really makes sense when 'hasValue' is true.
  */
