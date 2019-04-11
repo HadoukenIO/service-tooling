@@ -47,7 +47,6 @@ program.command('channels')
  */
 program.command('zip')
     .description('Creates a zip file that contains the provider source code and resources. Can be used to re-deploy the provider internally.')
-    .description('Creates a zip file that contains the provider source code and resources, for re-deploying.')
     .action(createProviderZip);
 
 /**
