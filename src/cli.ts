@@ -66,7 +66,7 @@ program.command('fix')
 
 
 program.command('docs')
-    .description('Generates typedoc for the project using the standardized look.')
+    .description('Generates typedoc for the project using the standardized theme.')
     .action(generateTypedoc);
 /**
  * Process CLI commands
@@ -134,7 +134,7 @@ function generateTypedoc() {
     const [typedocCmd, themeDir, outDir, tsConfig] = [
         './node_modules/.bin/typedoc',
         './node_modules/openfin-service-tooling/typedoc-template',
-        './dist/docs',
+        './dist/docs/api',
         './src/client/tsconfig.json'
     ].map(filePath => path.resolve(filePath));
     const cmd = `${typedocCmd} --name "OpenFin ${config.SERVICE_NAME}" --theme ${themeDir} --out ${outDir} --excludeNotExported --excludePrivate --excludeProtected --hideGenerator --tsconfig ${tsConfig} --readme none`; // eslint-disable-line
