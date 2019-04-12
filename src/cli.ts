@@ -111,7 +111,7 @@ async function buildCommandProcess(args: BuildCommandArgs) {
 function checkCommandProcess() {
     const eslintCmd = path.resolve('./node_modules/.bin/eslint');
     const eslintConfig = path.resolve('./node_modules/openfin-service-tooling/.eslintrc.json');
-    const cmd = `${eslintCmd} src test --ext .ts --ext .tsx --config ${eslintConfig}`;
+    const cmd = `"${eslintCmd}" src test --ext .ts --ext .tsx --config "${eslintConfig}"`;
     childprocess.execSync(cmd, {stdio: 'inherit'});
 }
 
@@ -121,7 +121,7 @@ function checkCommandProcess() {
 function fixCommandProcess() {
     const eslintCmd = path.resolve('./node_modules/.bin/eslint');
     const eslintConfig = path.resolve('./node_modules/openfin-service-tooling/.eslintrc.json');
-    const cmd = `${eslintCmd} src test --ext .ts --ext .tsx --fix --config ${eslintConfig}`;
+    const cmd = `"${eslintCmd}" src test --ext .ts --ext .tsx --fix --config "${eslintConfig}"`;
     childprocess.execSync(cmd, {stdio: 'inherit'});
 }
 
@@ -137,6 +137,6 @@ function generateTypedoc() {
         './dist/docs/api',
         './src/client/tsconfig.json'
     ].map(filePath => path.resolve(filePath));
-    const cmd = `${typedocCmd} --name "OpenFin ${config.SERVICE_NAME}" --theme ${themeDir} --out ${outDir} --excludeNotExported --excludePrivate --excludeProtected --hideGenerator --tsconfig ${tsConfig} --readme none`; // eslint-disable-line
+    const cmd = `"${typedocCmd}" --name "OpenFin ${config.SERVICE_NAME}" --theme "${themeDir}" --out "${outDir}" --excludeNotExported --excludePrivate --excludeProtected --hideGenerator --tsconfig "${tsConfig}" --readme none`; // eslint-disable-line
     childprocess.execSync(cmd, {stdio: 'inherit'});
 }
