@@ -9,18 +9,19 @@ const RUNTIME_CHANNELS = ['stable', 'alpha', 'beta', 'canary'];
  * Creates copies of the provider's app.json file, that each point at a different runtime release channel.
  */
 export function createRuntimeChannels(): void {
-    const rootDir = getRootDirectory();
-    const manifest = require(getProviderManifestPath(rootDir));
+    const manifest = require(getProviderManifestPath());
 
     RUNTIME_CHANNELS.forEach(channel => {
         manifest.runtime.version = channel;
 
+        const rootDir = getRootDirectory();
         const output = JSON.stringify(manifest, null, 4);
         writeFileSync(resolve(rootDir, `dist/provider/app.runtime-${channel}.json`), output, {encoding: 'utf8'});
     });
 }
 
-function getProviderManifestPath(rootDir: string): string {
+function getProviderManifestPath(): string {
+    const rootDir = getRootDirectory();
     const distPath = resolve(rootDir, 'dist/provider/app.json');
     const resPath = resolve(rootDir, 'res/provider/app.json');
 
