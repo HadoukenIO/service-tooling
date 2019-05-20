@@ -27,7 +27,7 @@ const fail = (err: string) => {
     process.exit(1);
 };
 
-const run = (processName: string, args?: any[], execaOptions?: any) => {
+const run = (processName: string, args?: any[], execaOptions?: execa.Options) => {
     const p = execa(processName, args, execaOptions);
     p.stdout.pipe(process.stdout);
     p.stderr.pipe(process.stderr);
@@ -61,7 +61,7 @@ export function runIntegrationTests(customJestArgs: string[], cliArgs: CLITestAr
             return port;
         })
         .catch(fail)
-        .then(OF_PORT => run('jest', jestArgs, {env: {OF_PORT}}))
+        .then(OF_PORT => run('jest', jestArgs, {env: {OF_PORT: (OF_PORT as Number).toString()}}))
         .then(cleanup)
         .catch(cleanup);
 }

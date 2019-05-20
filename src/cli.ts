@@ -81,7 +81,7 @@ program.command('docs')
  * Jest commands
  */
 program.command('test <type>')
-    .description('Runs all unit or int tests for the project.')
+    .description('Runs all jest tests for the provided type.  Type may be "int" or "unit"')
     .option('-r, --runtime <version>', 'Sets the runtime version.  Options: stable | w.x.y.z')
     .option('-e, --mode <mode>', 'Sets the webpack mode.  Defaults to "development".  Options: development | production | none', 'development')
     .option('-s, --static', 'Launches the server and application using pre-built files.', true)
