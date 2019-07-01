@@ -63,7 +63,8 @@ export function runIntegrationTests(customJestArgs: string[], cliArgs: CLITestAr
         .catch(fail)
         .then(OF_PORT => run('jest', jestArgs, {env: {OF_PORT: (OF_PORT as Number).toString()}}))
         .then(cleanup)
-        .catch(cleanup);
+        .catch(cleanup)
+        .catch(() => {});
 }
 
 export function runUnitTests(customJestArgs: string[]) {
