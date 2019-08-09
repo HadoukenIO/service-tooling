@@ -28,12 +28,24 @@ export interface CustomWebpackOptions extends webpack.Options.Optimization {
      * Allows a custom output file name to be used instead of the default [name]-bundle.js
      */
     outputFilename?: string;
+
+    /**
+     * Allows CSS to be extracted into a seperate file. If this is not specified, CSS will be bundled in the javascript bundle.
+     */
+    extractStyles?: {
+        /**
+         * Exported CSS file name. If no name is specified the bundle name will be used.
+         */
+        name?: string;
+    }
 }
 
 /**
  * Shared function to create a webpack config for an entry point
  */
 export function createConfig(outPath: string, entryPoint: string, options: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
+    const extractCSS = options ? !!options.extractStyles : false;
+
     const config: webpack.Configuration = {
         entry: entryPoint,
         optimization: {minimize: !options || options.minify !== false},
@@ -52,7 +64,7 @@ export function createConfig(outPath: string, entryPoint: string, options: Custo
                 {
                     test: /\.module\.s(a|c)ss$/,
                     loader: [
-                        process.env.NODE_ENV !== 'production' ? 'style-loader' : MiniCssExtractPlugin.loader,
+                        extractCSS ? MiniCssExtractPlugin.loader : 'style-loader',
                         {
                             loader: 'css-loader',
                             options: {
@@ -74,7 +86,7 @@ export function createConfig(outPath: string, entryPoint: string, options: Custo
                     test: /\.s(a|c)ss$/,
                     exclude: /\.module.(s(a|c)ss)$/,
                     loader: [
-                        process.env.NODE_ENV !== 'production' ? 'style-loader' : MiniCssExtractPlugin.loader,
+                        extractCSS ? MiniCssExtractPlugin.loader : 'style-loader',
                         'css-loader',
                         {
                             loader: 'sass-loader',
@@ -88,11 +100,7 @@ export function createConfig(outPath: string, entryPoint: string, options: Custo
                 {test: /\.tsx?$/, loader: 'ts-loader'}
             ]
         },
-        plugins: [
-            new MiniCssExtractPlugin({
-                filename: '[name].css'
-            })
-        ]
+        plugins: []
     };
 
     if (options && options.isLibrary === true) {
@@ -103,8 +111,16 @@ export function createConfig(outPath: string, entryPoint: string, options: Custo
         }
         config.output!.libraryTarget = 'umd';
     }
+
     if (plugins && plugins.length) {
         config.plugins!.push.apply(config.plugins, plugins);
+    }
+
+    if (extractCSS) {
+        const {name} = options.extractStyles!;
+        config.plugins!.push(new MiniCssExtractPlugin({
+            filename: name ? `${name}.css` : '[name].css'
+        }));
     }
 
     return config;
