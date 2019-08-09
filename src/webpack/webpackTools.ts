@@ -1,4 +1,5 @@
 import * as CopyWebpackPlugin from 'copy-webpack-plugin';
+import * as MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import * as webpack from 'webpack';
 
 import {getProjectConfig} from '../utils/getProjectConfig';
@@ -37,7 +38,7 @@ export function createConfig(outPath: string, entryPoint: string, options: Custo
         entry: entryPoint,
         optimization: {minimize: !options || options.minify !== false},
         output: {path: outPath, filename: `${options && options.outputFilename || '[name]-bundle'}.js`},
-        resolve: {extensions: ['.ts', '.tsx', '.js']},
+        resolve: {extensions: ['.ts', '.tsx', '.js', '.scss']},
         /**
             Webpack will try and bundle fs but because it is node it flags an error of not found.
             We are ok to set it as empty as fs will never be used in a window context anyway.
@@ -48,14 +49,50 @@ export function createConfig(outPath: string, entryPoint: string, options: Custo
         },
         module: {
             rules: [
-                {test: /\.css$/, loader: 'style-loader'},
-                {test: /\.css$/, loader: 'css-loader'},
-                {test: /\.module.css$/, loader: 'css-loader', query: {modules: true, localIdentName: '[name]__[local]___[hash:base64:5]'}},
+                {
+                    test: /\.module\.s(a|c)ss$/,
+                    loader: [
+                        process.env.NODE_ENV !== 'production' ? 'style-loader' : MiniCssExtractPlugin.loader,
+                        {
+                            loader: 'css-loader',
+                            options: {
+                                modules: true,
+                                localIdentName: '[name]__[local]___[hash:base64:5]',
+                                camelCase: true,
+                                sourceMap: true
+                            }
+                        },
+                        {
+                            loader: 'sass-loader',
+                            options: {
+                                sourceMap: true
+                            }
+                        }
+                    ]
+                },
+                {
+                    test: /\.s(a|c)ss$/,
+                    exclude: /\.module.(s(a|c)ss)$/,
+                    loader: [
+                        process.env.NODE_ENV !== 'production' ? 'style-loader' : MiniCssExtractPlugin.loader,
+                        'css-loader',
+                        {
+                            loader: 'sass-loader',
+                            options: {
+                                sourceMap: true
+                            }
+                        }
+                    ]
+                },
                 {test: /\.(png|jpg|gif|otf|svg)$/, use: [{loader: 'url-loader', options: {limit: 8192}}]},
                 {test: /\.tsx?$/, loader: 'ts-loader'}
             ]
         },
-        plugins: []
+        plugins: [
+            new MiniCssExtractPlugin({
+                filename: '[name].css'
+            })
+        ]
     };
 
     if (options && options.isLibrary === true) {
