@@ -32,19 +32,28 @@ export interface CustomWebpackOptions extends webpack.Options.Optimization {
     /**
      * Allows CSS to be extracted into a seperate file. If this is not specified, CSS will be bundled in the javascript bundle.
      */
-    extractStyles?: {
-        /**
-         * Exported CSS file name. If no name is specified the bundle name will be used.
-         */
-        name?: string;
-    }
+    extractStyles?: ExtractStyleOptions;
+}
+
+export interface ExtractStyleOptions {
+    /**
+     * Defaults to false.
+     */
+    extract?: boolean;
+    /**
+     * Exported CSS file name. If no name is specified the bundle name will be used.
+     */
+    name?: string;
 }
 
 /**
  * Shared function to create a webpack config for an entry point
  */
 export function createConfig(outPath: string, entryPoint: string, options: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
-    const extractCSS = options ? !!options.extractStyles : false;
+    let extractCSS = false;
+    if (options && options.extractStyles) {
+        extractCSS = options.extractStyles.extract || false;
+    }
 
     const config: webpack.Configuration = {
         entry: entryPoint,
