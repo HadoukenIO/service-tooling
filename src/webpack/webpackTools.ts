@@ -49,12 +49,12 @@ export interface ExtractStyleOptions {
 /**
  * Shared function to create a webpack config for an entry point
  */
-export function createConfig(outPath: string, entryPoint: string, options: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
+
+export function createConfig(outPath: string, entryPoint: string | webpack.Entry, options: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
     let extractCSS = false;
     if (options && options.extractStyles) {
         extractCSS = options.extractStyles.extract || false;
     }
-
     const config: webpack.Configuration = {
         entry: entryPoint,
         optimization: {minimize: !options || options.minify !== false},
