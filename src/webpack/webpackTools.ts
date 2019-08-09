@@ -71,7 +71,7 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
         module: {
             rules: [
                 {
-                    test: /\.module\.s(a|c)ss$/,
+                    test: /\.module\.s?(a|c)ss$/,
                     loader: [
                         extractCSS ? MiniCssExtractPlugin.loader : 'style-loader',
                         {
