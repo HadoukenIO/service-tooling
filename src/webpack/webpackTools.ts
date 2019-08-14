@@ -32,28 +32,17 @@ export interface CustomWebpackOptions extends webpack.Options.Optimization {
     /**
      * Allows CSS to be extracted into a seperate file. If this is not specified, CSS will be bundled in the javascript bundle.
      */
-    extractStyles?: ExtractStyleOptions;
-}
-
-export interface ExtractStyleOptions {
-    /**
-     * Defaults to false.
-     */
-    extract?: boolean;
-    /**
-     * Exported CSS file name. If no name is specified the bundle name will be used.
-     */
-    name?: string;
+    extractStyles?: boolean | string;
 }
 
 /**
  * Shared function to create a webpack config for an entry point
  */
 
-export function createConfig(outPath: string, entryPoint: string | webpack.Entry, options: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
+export function createConfig(outPath: string, entryPoint: string | webpack.Entry, options?: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
     let extractCSS = false;
     if (options && options.extractStyles) {
-        extractCSS = options.extractStyles.extract || false;
+        extractCSS = !!options.extractStyles || false;
     }
     const config: webpack.Configuration = {
         entry: entryPoint,
@@ -71,9 +60,9 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
         module: {
             rules: [
                 {
-                    test: /\.module\.s?(a|c)ss$/,
+                    test: /\.module\.(sc|sa|c)ss$/,
                     loader: [
-                        extractCSS ? MiniCssExtractPlugin.loader : 'style-loader',
+                        finalCSSLoader(extractCSS),
                         {
                             loader: 'css-loader',
                             options: {
@@ -92,16 +81,13 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
                     ]
                 },
                 {
-                    test: /\.s(a|c)ss$/,
+                    test: /\.(sc|sa|c)ss$/,
                     exclude: /\.module.(s(a|c)ss)$/,
                     loader: [
-                        extractCSS ? MiniCssExtractPlugin.loader : 'style-loader',
+                        finalCSSLoader(extractCSS),
                         'css-loader',
                         {
-                            loader: 'sass-loader',
-                            options: {
-                                sourceMap: true
-                            }
+                            loader: 'sass-loader'
                         }
                     ]
                 },
@@ -126,9 +112,9 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
     }
 
     if (extractCSS) {
-        const {name} = options.extractStyles!;
+        const name = options!.extractStyles!;
         config.plugins!.push(new MiniCssExtractPlugin({
-            filename: name ? `${name}.css` : '[name].css'
+            filename: (typeof name === 'string') ? `${name}.css` : '[name].css'
         }));
     }
 
@@ -159,6 +145,18 @@ export const manifestPlugin = (() => {
         }
     }]);
 })();
+
+const finalCSSLoader = (extract: boolean) => {
+    const styleLoader = {
+        loader: 'style-loader',
+        options: {
+            attributes: {id: 'stylesheet'},
+            injectType: 'singletonStyleTag'
+        }
+    };
+
+    return extract ? MiniCssExtractPlugin.loader : styleLoader;
+};
 
 /**
  * Replaces 'PACKAGE_VERSION' constant in source files with the current version of the service,
