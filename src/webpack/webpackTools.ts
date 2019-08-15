@@ -40,10 +40,7 @@ export interface CustomWebpackOptions extends webpack.Options.Optimization {
  */
 
 export function createConfig(outPath: string, entryPoint: string | webpack.Entry, options?: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
-    let extractCSS = false;
-    if (options && options.extractStyles) {
-        extractCSS = !!options.extractStyles || false;
-    }
+    const extractCSS = (options) ? !!options.extractStyles || false : false;
     const config: webpack.Configuration = {
         entry: entryPoint,
         optimization: {minimize: !options || options.minify !== false},
@@ -62,7 +59,7 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
                 {
                     test: /\.module\.(sc|sa|c)ss$/,
                     loader: [
-                        finalCSSLoader(extractCSS),
+                        finalCssLoader(extractCSS),
                         {
                             loader: 'css-loader',
                             options: {
@@ -84,7 +81,7 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
                     test: /\.(sc|sa|c)ss$/,
                     exclude: /\.module.(s(a|c)ss)$/,
                     loader: [
-                        finalCSSLoader(extractCSS),
+                        finalCssLoader(extractCSS),
                         'css-loader',
                         {
                             loader: 'sass-loader'
@@ -146,7 +143,11 @@ export const manifestPlugin = (() => {
     }]);
 })();
 
-const finalCSSLoader = (extract: boolean) => {
+/**
+ * Selects the way CSS should be bundled with the JS or extracted into a CSS file
+ * @param extract if true the styles will be extracted.
+ */
+const finalCssLoader = (extract: boolean) => {
     const styleLoader = {
         loader: 'style-loader',
         options: {
