@@ -51,7 +51,8 @@ export function createConfig(outPath: string, entryPoint: string, options: Custo
                 {test: /\.css$/, loader: 'style-loader'},
                 {test: /\.css$/, loader: 'css-loader'},
                 {test: /\.module.css$/, loader: 'css-loader', query: {modules: true, localIdentName: '[name]__[local]___[hash:base64:5]'}},
-                {test: /\.(png|jpg|gif|otf|svg)$/, use: [{loader: 'url-loader', options: {limit: 8192}}]},
+                {test: /\.(otf|woff2?)$/, use: [{loader: 'url-loader', options: {limit: 50000}}]},
+                {test: /\.(png|jpg|gif|svg)$/, use: [{loader: 'url-loader', options: {limit: 8192}}]},
                 {test: /\.tsx?$/, loader: 'ts-loader'}
             ]
         },

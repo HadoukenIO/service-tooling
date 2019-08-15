@@ -1,3 +1,5 @@
+import './client.css';
+
 declare const PACKAGE_VERSION: string;
 
 console.log('I am a test build file');
