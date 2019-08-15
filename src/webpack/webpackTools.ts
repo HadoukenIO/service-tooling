@@ -40,7 +40,7 @@ export interface CustomWebpackOptions extends webpack.Options.Optimization {
  */
 
 export function createConfig(outPath: string, entryPoint: string | webpack.Entry, options?: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
-    const extractCSS = (options) ? !!options.extractStyles || false : false;
+    const extractCSS = (options) ? !!options.extractStyles : false;
     const config: webpack.Configuration = {
         entry: entryPoint,
         optimization: {minimize: !options || options.minify !== false},
