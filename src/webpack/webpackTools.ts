@@ -40,7 +40,7 @@ export interface CustomWebpackOptions extends webpack.Options.Optimization {
  */
 
 export function createConfig(outPath: string, entryPoint: string | webpack.Entry, options?: CustomWebpackOptions, ...plugins: webpack.Plugin[]) {
-    const extractCSS = (options) ? !!options.extractStyles : false;
+    const extractCss = (options) ? !!options.extractStyles : false;
     const config: webpack.Configuration = {
         entry: entryPoint,
         optimization: {minimize: !options || options.minify !== false},
@@ -59,7 +59,7 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
                 {
                     test: /\.module\.(sc|sa|c)ss$/,
                     loader: [
-                        finalCssLoader(extractCSS),
+                        finalCssLoader(extractCss),
                         {
                             loader: 'css-loader',
                             options: {
@@ -81,7 +81,7 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
                     test: /\.(sc|sa|c)ss$/,
                     exclude: /\.module.(s(a|c)ss)$/,
                     loader: [
-                        finalCssLoader(extractCSS),
+                        finalCssLoader(extractCss),
                         'css-loader',
                         {
                             loader: 'sass-loader'
@@ -108,7 +108,7 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
         config.plugins!.push.apply(config.plugins, plugins);
     }
 
-    if (extractCSS) {
+    if (extractCss) {
         const name = options!.extractStyles!;
         config.plugins!.push(new MiniCssExtractPlugin({
             filename: (typeof name === 'string') ? `${name}.css` : '[name].css'
