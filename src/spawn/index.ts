@@ -204,7 +204,7 @@ async function createApplication(options: Omit<AppData, 'parent'>): Promise<Appl
             name,
             url,
             state,
-            shortcut: options.shortcutName ? JSON.stringify({name: options.shortcutName}) : '',
+            shortcutName: options.shortcutName || '',
             defaultWidth: size.x,
             defaultHeight: size.y,
             frame: options.frame === undefined ? true : options.frame,
