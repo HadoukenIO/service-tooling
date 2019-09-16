@@ -105,8 +105,8 @@ export function createCustomManifestMiddleware(): RequestHandler {
             shortcut
         } = {
             // Set default values
-            uuid: `demo-app-${randomId}`,
-            name: `Openfin Demo App ${randomId}`,
+            uuid: `test-app-${randomId}`,
+            name: `Openfin Test App ${randomId}`,
             url: `http://localhost:${PORT}/demo/testbed/index.html`,
             runtime: defaultConfig.runtime.version,
             provider: 'local',
