@@ -126,11 +126,11 @@ export function createCustomManifestMiddleware(): RequestHandler {
             defaultWidth: Number.parseInt(req.query.defaultWidth, 10) || 860,
             defaultHeight: Number.parseInt(req.query.defaultHeight, 10) || 605,
             licenseKey: defaultConfig.licenseKey,
-            shortcut: req.query.shortcutName && {
+            shortcut: req.query.shortcutName ? {
                 'company': 'OpenFin',
                 'icon': 'openfin-test-icon.ico',
                 'name': req.query.shortcutName
-            }
+            } : undefined
         };
 
         const manifest = {
