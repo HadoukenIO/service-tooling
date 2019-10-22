@@ -50,7 +50,7 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
             removeEmptyChunks: false,
             splitChunks: false
         },
-        output: {pathinfo: false, path: outPath, filename: `${options && options.outputFilename || '[name]-bundle'}.js`},
+        output: {pathinfo: false, path: outPath, filename: `${(options && options.outputFilename) || '[name]-bundle'}.js`},
         resolve: {extensions: ['.ts', '.tsx', '.js', '.scss']},
         /**
             Webpack will try and bundle fs but because it is node it flags an error of not found.
@@ -156,7 +156,7 @@ export const manifestPlugin = (() => {
             const config = JSON.parse(content.toString());
 
             if (typeof process.env.SERVICE_VERSION !== 'undefined' && process.env.SERVICE_VERSION !== '') {
-                config.startup_app.url = `https://cdn.openfin.co/services/openfin/${SERVICE_NAME}/` + process.env.SERVICE_VERSION + '/provider.html';
+                config.startup_app.url = `https://cdn.openfin.co/services/openfin/${SERVICE_NAME}/${process.env.SERVICE_VERSION}/provider.html`;
                 config.startup_app.autoShow = false;
             } else {
                 config.startup_app.url = `http://localhost:${PORT}/provider/provider.html`;
