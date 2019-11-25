@@ -15,7 +15,7 @@ export function createProviderZip() {
     const archive = archiver('zip', {zlib: {level: 9}});
 
     output.on('close', () => {
-        console.log(`Zip file created at xxx '${output.path}'`);
+        console.log(`Zip file created at '${output.path}'`);
         console.log(`${archive.pointer()} total bytes written`);
     });
 
