@@ -35,7 +35,6 @@ export async function createAsar() {
         ...glob.sync(path.resolve(output, '**', '*'), {dot: true})
     ].forEach((file) => {
         if (!fs.statSync(file).isDirectory() && !file.endsWith('.ofds')) {
-            console.log(`signing ${file}`);
             openfinSign(file);
         }
     });
