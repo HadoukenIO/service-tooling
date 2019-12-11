@@ -5,15 +5,16 @@ import * as fs from 'fs';
 
 import * as program from 'commander';
 
-import {startServer, createServer, startApplication, createDefaultMiddleware} from './server/server';
-import {CLIArguments, BuildCommandArgs, CLITestArguments, JestMode} from './types';
 import {createProviderZip} from './scripts/createProviderZip';
 import {createRuntimeChannels} from './scripts/createRuntimeChannels';
-import {executeWebpack} from './webpack/executeWebpack';
-import {getProjectConfig} from './utils/getProjectConfig';
+import {startServer, createServer, startApplication, createDefaultMiddleware} from './server/server';
 import {runIntegrationTests, runUnitTests} from './testing/runner';
-import getModuleRoot from './utils/getModuleRoot';
+import {CLIArguments, BuildCommandArgs, CLITestArguments, JestMode} from './types';
+import {allowHook, Hooks, loadHooks} from './utils/allowHook';
+import {getModuleRoot} from './utils/getModuleRoot';
+import {getProjectConfig} from './utils/getProjectConfig';
 import {executeAllPlugins} from './webpack/plugins/pluginExecutor';
+import {executeWebpack} from './webpack/executeWebpack';
 
 /**
  * Start command
@@ -103,6 +104,9 @@ program.command('plugins [action]')
     .description('Executes all runnable plugins with the supplied action')
     .action(startPluginExecutor);
 
+// Load hooks (if any)
+loadHooks();
+
 /**
  * Process CLI commands
  */
@@ -178,19 +182,31 @@ function startTestRunner(type: JestMode, args: CLITestArguments) {
  * Starts the build + server process, passing in any provided CLI arguments
  */
 async function startCommandProcess(args: CLIArguments) {
-    const sanitizedArgs: CLIArguments = {
-        providerVersion: args.providerVersion || 'local',
-        mode: args.mode || 'development',
-        noDemo: args.noDemo === undefined ? false : true,
-        static: args.static === undefined ? false : true,
-        writeToDisk: args.writeToDisk === undefined ? false : true,
-        runtime: args.runtime
+    const parsedArgs: CLIArguments = {
+        providerVersion: 'local',
+        mode: 'development',
+        noDemo: false,
+        static: false,
+        writeToDisk: false,
+        runtime: undefined,
+
+        // Hooks can selectively override the above defaults. CLI args will still take precedence.
+        ...allowHook(Hooks.DEFAULT_ARGS, {})()
     };
 
+    // Apply CLI-specified arguments on top of defaults
+    const argList = Object.keys(parsedArgs) as (keyof CLIArguments)[];
+    argList.forEach(<K extends keyof CLIArguments>(key: K) => {
+        if (args.hasOwnProperty(key)) {
+            parsedArgs[key] = args[key];
+        }
+    });
+
     const server = await createServer();
-    await createDefaultMiddleware(server, sanitizedArgs);
+    allowHook(Hooks.APP_MIDDLEWARE)(server, 'start');
+    await createDefaultMiddleware(server, parsedArgs);
     await startServer(server);
-    startApplication(sanitizedArgs);
+    startApplication(parsedArgs);
 }
 
 /**
@@ -226,6 +242,6 @@ function generateTypedoc() {
         './dist/docs/api',
         './src/client/tsconfig.json'
     ].map((filePath) => path.resolve(filePath));
-    const cmd = `"${typedocCmd}" --name "OpenFin ${config.SERVICE_TITLE}" --theme "${themeDir}" --out "${outDir}" --excludeNotExported --excludePrivate --excludeProtected --hideGenerator --tsconfig "${tsConfig}" --readme ${readme}`; // eslint-disable-line
+    const cmd = `"${typedocCmd}" --name "OpenFin ${config.TITLE}" --theme "${themeDir}" --out "${outDir}" --excludeNotExported --excludePrivate --excludeProtected --hideGenerator --tsconfig "${tsConfig}" --readme ${readme}`; // eslint-disable-line
     childprocess.execSync(cmd, {stdio: 'inherit'});
 }
