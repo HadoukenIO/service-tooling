@@ -19,7 +19,7 @@ export enum Hooks {
      */
     APP_MIDDLEWARE,
     /**
-     * Register middleware with the testing server.
+     * Register middleware with the local server that runs during integration tests.
      *
      * Any middleware added via this hook will take precedence over the "built-in" middleware.
      */
@@ -34,7 +34,7 @@ export enum Hooks {
 
 export interface HooksAPI {
     [Hooks.DEFAULT_ARGS]: () => Partial<CLIArguments>;
-    [Hooks.APP_MIDDLEWARE]: (app: express.Express, command: 'start' | 'test') => void;
+    [Hooks.APP_MIDDLEWARE]: (app: express.Express) => void;
     [Hooks.TEST_MIDDLEWARE]: (app: express.Express) => void;
 }
 

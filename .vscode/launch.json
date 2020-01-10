@@ -44,6 +44,15 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "FDC3 Integration Tests",
+            "program": "${workspaceFolder}/dist/cli.js",
+            "cwd": "${workspaceFolder}/../fdc3-service",
+            "args": ["test", "int"],
+            "preLaunchTask": "build-debug"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "OFD Start",
             "program": "${workspaceFolder}/dist/cli.js",
             "cwd": "${workspaceFolder}/../os-launchpad",

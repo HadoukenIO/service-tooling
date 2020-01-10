@@ -92,7 +92,6 @@ program.command('test <type>')
     .option('-s, --static', 'Launches the server and application using pre-built files.', true)
     .option('-n, --fileNames <fileNames...>', 'Runs all tests in the given file.')
     .option('-f, --filter <filter>', 'Only runs tests whose names match the given pattern.')
-    .option('-m, --customMiddlewarePath <path>', 'Path to a custom middleware js file.  Only applicable for Integration tests.')
     .option('-x, --extraArgs <extraArgs...>', 'Any extra arguments to pass on to jest')
     .option('-c, --noColor', 'Disables the color for the jest terminal output text', true)
     .action(startTestRunner);
@@ -133,7 +132,6 @@ function startTestRunner(type: JestMode, args: CLITestArguments) {
         static: args.static === undefined ? false : true,
         filter: args.filter ? `--testNamePattern=${args.filter}` : '',
         fileNames: (args.fileNames && (args.fileNames as unknown as string).split(' ').map((testFileName) => `${testFileName}.${type}test.ts`)) || [],
-        customMiddlewarePath: (args.customMiddlewarePath && path.resolve(args.customMiddlewarePath)) || undefined,
         runtime: args.runtime,
         noColor: args.noColor === undefined ? false : true,
         extraArgs: (args.extraArgs && (args.extraArgs as unknown as string).split(' ')) || []
@@ -203,7 +201,7 @@ async function startCommandProcess(args: CLIArguments) {
     });
 
     const server = await createServer();
-    allowHook(Hooks.APP_MIDDLEWARE)(server, 'start');
+    allowHook(Hooks.APP_MIDDLEWARE)(server);
     await createDefaultMiddleware(server, parsedArgs);
     await startServer(server);
     startApplication(parsedArgs);

@@ -6,6 +6,7 @@ import {launch} from 'hadouken-js-adapter';
 
 import {createServer, startServer, createDefaultMiddleware} from '../server/server';
 import {CLITestArguments} from '../types';
+import {Hooks, allowHook} from '../utils/allowHook';
 import {getModuleRoot} from '../utils/getModuleRoot';
 import {getProjectConfig} from '../utils/getProjectConfig';
 
@@ -43,14 +44,8 @@ export function runIntegrationTests(customJestArgs: string[], cliArgs: CLITestAr
     ]);
 
     createServer()
-        .then(async (app) => {
-            if (cliArgs.customMiddlewarePath) {
-                await require(cliArgs.customMiddlewarePath)(app);
-            }
-
-            return app;
-        })
         .then((app) => {
+            allowHook(Hooks.TEST_MIDDLEWARE)(app);
             return createDefaultMiddleware(app, cliArgs);
         })
         .then(startServer)
