@@ -8,7 +8,7 @@ import {CLIArguments} from '../types';
 
 import {getRootDirectory} from './getRootDirectory';
 
-type HookableFunction = (...args: any[]) => void;
+type HookableFunction = (...args: any[]) => any;
 const hooks: {[key: string]: HookableFunction} = {};
 
 export enum Hooks {
@@ -38,9 +38,6 @@ export interface HooksAPI {
     [Hooks.TEST_MIDDLEWARE]: (app: express.Express) => void;
 }
 
-type FunctionHook<T extends Hooks> = () => HooksAPI[T];
-type ValueHook<T extends Hooks> = () => ReturnType<HooksAPI[T]>;
-
 export function loadHooks(): void {
     const hooksPathSrc = path.resolve(getRootDirectory(), 'hooks.ts');
     const hooksPathOut = path.resolve(getRootDirectory(), 'hooks.js');
@@ -68,21 +65,37 @@ export function loadHooks(): void {
     }
 }
 
-export function allowHook<T extends Hooks>(id: T, fallback?: HooksAPI[T]|ReturnType<HooksAPI[T]>): HooksAPI[T] {
-    const tmp = (...args: any[]) => {
-        const callback: HookableFunction = hooks[id] as HooksAPI[T];
-
-        if (callback) {
-            return callback(...args);
-        } else if (typeof fallback === 'function') {
-            return (fallback as HookableFunction)(...args);
-        } else {
-            return fallback;
-        }
-    };
-    return tmp as HooksAPI[T];
+export function allowHook<K extends keyof HooksAPI, T extends HooksAPI[K]>(id: K, fallback?: T | ReturnType<T>): (...args: Parameters<T>) => ReturnType<T> {
+    return hook.bind<null, typeof id, typeof fallback, Parameters<T>, ReturnType<T>>(null, id, fallback);
 }
 
 export function registerHook<T extends Hooks>(id: T, callback: HooksAPI[T]): void {
     hooks[id] = callback;
+}
+
+/**
+ * Checks for a registered hook of the given type. If found, will invoke and return result.
+ *
+ * Otherwise, will return the given fallback (either a value, or a function with the same signature as the hook). The
+ * fallback argument is optional, as it is not required in cases where the hook has a void return type. The fallback
+ * argument should always be used for non-void hooks.
+ *
+ * @param id Hook identifier
+ * @param fallback The value to use (or a function that will return this value) when there is no hook registered
+ * @param args Arguments to pass-through to the hook
+ */
+function hook<K extends keyof HooksAPI, T extends HooksAPI[K]>(id: K, fallback?: T | ReturnType<T>, ...args: Parameters<T>): ReturnType<T> {
+    const callback: HookableFunction = hooks[id];
+
+    if (callback) {
+        return callback(...args);
+    } else if (typeof fallback === 'function') {
+        return (fallback as HookableFunction)(...args);
+    } else if (fallback !== undefined) {
+        return fallback;
+    } else {
+        // No hook registered, and no fallback value/callback specified.
+        // This should only be used with hooks that have a 'void' return type.
+        return undefined as ReturnType<T>;
+    }
 }

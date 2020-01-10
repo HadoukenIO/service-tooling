@@ -31,6 +31,33 @@
             "cwd": "${workspaceFolder}/../fdc3-service",
             "args": ["asar"],
             "preLaunchTask": "build-debug"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "FDC3 Start",
+            "program": "${workspaceFolder}/dist/cli.js",
+            "cwd": "${workspaceFolder}/../fdc3-service",
+            "args": ["start", "-w"],
+            "preLaunchTask": "build-debug"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "OFD Start",
+            "program": "${workspaceFolder}/dist/cli.js",
+            "cwd": "${workspaceFolder}/../os-launchpad",
+            "args": ["start"],
+            "preLaunchTask": "build-debug"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "OFD Build",
+            "program": "${workspaceFolder}/dist/cli.js",
+            "cwd": "${workspaceFolder}/../os-launchpad",
+            "args": ["build"],
+            "preLaunchTask": "build-debug"
         }
     ]
 }
