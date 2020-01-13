@@ -5,6 +5,7 @@ import * as fs from 'fs';
 
 import * as program from 'commander';
 
+import {createAsar} from './scripts/createAsar';
 import {createProviderZip} from './scripts/createProviderZip';
 import {createRuntimeChannels} from './scripts/createRuntimeChannels';
 import {startServer, createServer, startApplication, createDefaultMiddleware} from './server/server';
@@ -54,6 +55,13 @@ program.command('channels')
 program.command('zip')
     .description('Creates a zip file that contains the provider source code and resources. Can be used to re-deploy the provider internally.')
     .action(createProviderZip);
+
+/**
+ * Asar command
+ */
+program.command('asar')
+    .description('Creates an asar file that contains the provider source code and resources, and client api js file.')
+    .action(createAsar);
 
 /**
  * ESLint Check
