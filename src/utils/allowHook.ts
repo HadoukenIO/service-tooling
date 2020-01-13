@@ -11,31 +11,31 @@ import {getRootDirectory} from './getRootDirectory';
 type HookableFunction = (...args: any[]) => any;
 const hooks: {[key: string]: HookableFunction} = {};
 
-export enum Hooks {
+export enum Hook {
     /**
      * Register middleware with the 'npm start' server.
      *
      * Any middleware added via this hook will take precedence over the "built-in" middleware.
      */
-    APP_MIDDLEWARE,
+    APP_MIDDLEWARE = 'APP_MIDDLEWARE',
     /**
      * Register middleware with the local server that runs during integration tests.
      *
      * Any middleware added via this hook will take precedence over the "built-in" middleware.
      */
-    TEST_MIDDLEWARE,
+    TEST_MIDDLEWARE = 'TEST_MIDDLEWARE',
     /**
      * Hook to override default values for the `npm start` CLI options.
      *
      * Note that using this hook may make some of the text in `npm start --help` inaccurate.
      */
-    DEFAULT_ARGS,
+    DEFAULT_ARGS = 'DEFAULT_ARGS'
 }
 
 export interface HooksAPI {
-    [Hooks.DEFAULT_ARGS]: () => Partial<CLIArguments>;
-    [Hooks.APP_MIDDLEWARE]: (app: express.Express) => void;
-    [Hooks.TEST_MIDDLEWARE]: (app: express.Express) => void;
+    [Hook.DEFAULT_ARGS]: () => Partial<CLIArguments>;
+    [Hook.APP_MIDDLEWARE]: (app: express.Express) => void;
+    [Hook.TEST_MIDDLEWARE]: (app: express.Express) => void;
 }
 
 export function loadHooks(): void {
@@ -69,7 +69,7 @@ export function allowHook<K extends keyof HooksAPI, T extends HooksAPI[K]>(id: K
     return hook.bind<null, typeof id, typeof fallback, Parameters<T>, ReturnType<T>>(null, id, fallback);
 }
 
-export function registerHook<T extends Hooks>(id: T, callback: HooksAPI[T]): void {
+export function registerHook<T extends Hook>(id: T, callback: HooksAPI[T]): void {
     hooks[id] = callback;
 }
 

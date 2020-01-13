@@ -73,7 +73,7 @@ export async function startApplication(args: CLIArguments) {
     const {IS_SERVICE} = getProjectConfig();
 
     // Manually start service on Mac OS (no RVM support)
-    if (platform() === 'darwin') {
+    if (IS_SERVICE && platform() === 'darwin') {
         console.log('Starting Provider for Mac OS');
 
         // Launch latest stable version of the service

@@ -11,7 +11,7 @@ import {createRuntimeChannels} from './scripts/createRuntimeChannels';
 import {startServer, createServer, startApplication, createDefaultMiddleware} from './server/server';
 import {runIntegrationTests, runUnitTests} from './testing/runner';
 import {CLIArguments, BuildCommandArgs, CLITestArguments, JestMode} from './types';
-import {allowHook, Hooks, loadHooks} from './utils/allowHook';
+import {allowHook, Hook, loadHooks} from './utils/allowHook';
 import {getModuleRoot} from './utils/getModuleRoot';
 import {getProjectConfig} from './utils/getProjectConfig';
 import {executeAllPlugins} from './webpack/plugins/pluginExecutor';
@@ -197,7 +197,7 @@ async function startCommandProcess(args: CLIArguments) {
         runtime: undefined,
 
         // Hooks can selectively override the above defaults. CLI args will still take precedence.
-        ...allowHook(Hooks.DEFAULT_ARGS, {})()
+        ...allowHook(Hook.DEFAULT_ARGS, {})()
     };
 
     // Apply CLI-specified arguments on top of defaults
@@ -209,7 +209,7 @@ async function startCommandProcess(args: CLIArguments) {
     });
 
     const server = await createServer();
-    allowHook(Hooks.APP_MIDDLEWARE)(server);
+    allowHook(Hook.APP_MIDDLEWARE)(server);
     await createDefaultMiddleware(server, parsedArgs);
     await startServer(server);
     startApplication(parsedArgs);
