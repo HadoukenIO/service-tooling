@@ -129,54 +129,68 @@ function startPluginExecutor(action?: string) {
 }
 
 /**
+ * Applies any user-provided arguments on top of the default arguments for each CLI command.
+ *
+ * It is important that the given `defaultArgs` value includes entries for every argument, even if those arguments are
+ * optional.
+ *
+ * @param defaultArgs Hard-coded default arguments for the current command
+ * @param args User-provided CLI args
+ */
+function applyCLIArgs<T>(defaultArgs: Required<T>, args: Partial<T>) {
+    const parsedArgs = {...defaultArgs};
+    const argList = Object.keys(parsedArgs) as (keyof T)[];
+    argList.forEach(<K extends keyof T>(key: K) => {
+        if (args.hasOwnProperty(key)) {
+            parsedArgs[key] = args[key]!;
+        }
+    });
+
+    return parsedArgs;
+}
+
+/**
  * Initiator for the jest int/unit tests
  */
 function startTestRunner(type: JestMode, args: CLITestArguments) {
-    const sanitizedArgs: CLITestArguments = {
+    const parsedArgs = applyCLIArgs<CLITestArguments>({
         providerVersion: 'testing',
+        mode: 'development',
         noDemo: true,
-        writeToDisk: args.static !== undefined && args.static ? false : true,
-        mode: args.mode || 'development',
-        static: args.static === undefined ? false : true,
-        filter: args.filter ? `--testNamePattern=${args.filter}` : '',
-        fileNames: (args.fileNames && (args.fileNames as unknown as string).split(' ').map((testFileName) => `${testFileName}.${type}test.ts`)) || [],
-        runtime: args.runtime,
-        noColor: args.noColor === undefined ? false : true,
-        extraArgs: (args.extraArgs && (args.extraArgs as unknown as string).split(' ')) || []
-    };
+        static: false,
+        writeToDisk: true,
+        filter: '',
+        fileNames: '',
+        runtime: '',
+        noColor: false,
+        extraArgs: ''
+    }, args);
+    const jestArgs: string[] = [];
 
-    const jestArgs = [];
-
-    /**
-     * Pushes in the colors argument if requested
-     */
-    if (!sanitizedArgs.noColor) {
+    // Pushes in the colors argument if requested
+    if (!parsedArgs.noColor) {
         jestArgs.push('--colors');
     }
 
-    /**
-     * Pushes in any file names provided
-     */
-    if (sanitizedArgs.fileNames) {
-        jestArgs.push(...sanitizedArgs.fileNames);
+    // Pushes in any file names provided
+    if (parsedArgs.fileNames) {
+        const fileNames = parsedArgs.fileNames.split(' ').map((testFileName) => `${testFileName}.${type}test.ts`);
+        jestArgs.push(...fileNames);
     }
 
-    /**
-     * Pushes in the requested filter
-     */
-    if (sanitizedArgs.filter) {
-        jestArgs.push(sanitizedArgs.filter);
+    // Pushes in the requested filter
+    if (parsedArgs.filter) {
+        jestArgs.push(`--testNamePattern=${parsedArgs.filter}`);
     }
 
-    /**
-     * Adds any extra arguments to the end
-     */
-    if (sanitizedArgs.extraArgs) {
-        jestArgs.push(...sanitizedArgs.extraArgs);
+    // Adds any extra arguments to the end
+    if (parsedArgs.extraArgs) {
+        const extraArgs = parsedArgs.extraArgs.split(' ');
+        jestArgs.push(...extraArgs);
     }
 
     if (type === 'int') {
-        runIntegrationTests(jestArgs, sanitizedArgs);
+        runIntegrationTests(jestArgs, parsedArgs);
     } else if (type === 'unit') {
         runUnitTests(jestArgs);
     } else {
@@ -188,25 +202,17 @@ function startTestRunner(type: JestMode, args: CLITestArguments) {
  * Starts the build + server process, passing in any provided CLI arguments
  */
 async function startCommandProcess(args: CLIArguments) {
-    const parsedArgs: CLIArguments = {
+    const parsedArgs = applyCLIArgs<CLIArguments>({
         providerVersion: 'local',
         mode: 'development',
         noDemo: false,
         static: false,
         writeToDisk: false,
-        runtime: undefined,
+        runtime: '',
 
         // Hooks can selectively override the above defaults. CLI args will still take precedence.
         ...allowHook(Hook.DEFAULT_ARGS, {})()
-    };
-
-    // Apply CLI-specified arguments on top of defaults
-    const argList = Object.keys(parsedArgs) as (keyof CLIArguments)[];
-    argList.forEach(<K extends keyof CLIArguments>(key: K) => {
-        if (args.hasOwnProperty(key)) {
-            parsedArgs[key] = args[key];
-        }
-    });
+    }, args);
 
     const server = await createServer();
     allowHook(Hook.APP_MIDDLEWARE)(server);
@@ -219,9 +225,11 @@ async function startCommandProcess(args: CLIArguments) {
  * Initiates a webpack build for the extending project
  */
 async function buildCommandProcess(args: BuildCommandArgs) {
-    const sanitizedArgs = {mode: args.mode || 'production'};
+    const parsedArgs = applyCLIArgs<BuildCommandArgs>({
+        mode: 'production'
+    }, args);
 
-    await executeWebpack(sanitizedArgs.mode, true);
+    await executeWebpack(parsedArgs.mode, true);
     process.exit(0);
 }
 
