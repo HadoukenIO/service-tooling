@@ -17,12 +17,16 @@ export interface Config extends ConfigFile {
 }
 
 /**
- * Given name for the projects local configuration file needed for our operations.
+ * Given name for the project's local configuration file needed for our operations.
+ *
+ * The use of this filename indicates that the project is a Desktop Service.
  */
 const CONFIG_FILE_PATH_SERVICE = './services.config.json';
 
 /**
- * Given name for the projects local configuration file needed for our operations.
+ * Given name for the project's local configuration file needed for our operations.
+ *
+ * The use of this filename indicates that the project is a stand-alone application.
  */
 const CONFIG_FILE_PATH_PROJECT = './project.config.json';
 
@@ -94,15 +98,15 @@ export function getProjectConfig<T extends Config = Config>(): Readonly<T> {
     return config as T;
 }
 
-function parseCLIArg<T>(input: string, defaultValue: T) {
+function parseCLIArg<T>(input: string, defaultValue: T): T {
     switch (typeof defaultValue) {
         case 'string':
-            return input;
+            return input as unknown as T;
         case 'number':
         {
             const value = parseFloat(input);
             if (!isNaN(value)) {
-                return value;
+                return value as unknown as T;
             }
             break;
         }
@@ -110,7 +114,7 @@ function parseCLIArg<T>(input: string, defaultValue: T) {
         {
             const toLower = (input).toLowerCase();
             if (toLower === 'true' || toLower === 'false') {
-                return toLower === 'true';
+                return (toLower === 'true') as unknown as T;
             }
             break;
         }

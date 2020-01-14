@@ -29,9 +29,11 @@ export async function executeWebpack(mode: WebpackMode, writeToDisk: boolean): P
             config.mode = (config.mode || mode);
         }
 
-        // Create express middleware
-        const compiler = webpack(config as Configuration);
+        // Webpack can be invoked with one or multiple config objects, but TypeScript gets confused by the use of a
+        // union type for `config`, requiring a cast.
+        const compiler: webpack.ICompiler = webpack(config as Configuration);
 
+        // Create express middleware
         const middleware = webpackDevMiddleware(compiler, {publicPath: '/', writeToDisk});
 
         // Wait until initial build has finished before starting application
