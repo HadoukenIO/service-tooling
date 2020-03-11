@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import * as childprocess from 'child_process';
 import * as path from 'path';
-import * as fs from 'fs';
 
 import * as program from 'commander';
+import * as execa from 'execa';
+import * as fs from 'fs-extra';
+import {connect} from 'hadouken-js-adapter';
 
 import {createAsar} from './scripts/createAsar';
 import {createProviderZip} from './scripts/createProviderZip';
@@ -14,8 +16,33 @@ import {CLIArguments, BuildCommandArgs, CLITestArguments, JestMode} from './type
 import {allowHook, Hook, loadHooks} from './utils/allowHook';
 import {getModuleRoot} from './utils/getModuleRoot';
 import {getProjectConfig} from './utils/getProjectConfig';
+import {getProviderPath} from './utils/getProviderUrl';
+import {getRootDirectory} from './utils/getRootDirectory';
 import {executeAllPlugins} from './webpack/plugins/pluginExecutor';
 import {executeWebpack} from './webpack/executeWebpack';
+
+// Load hooks (if any)
+loadHooks();
+
+const defaultStartArgs: Required<CLIArguments> = {
+    providerVersion: 'local',
+    mode: 'development',
+    noDemo: false,
+    static: false,
+    writeToDisk: false,
+    runtime: '',
+
+    // Hooks can selectively override the above defaults. CLI args will still take precedence.
+    ...allowHook(Hook.DEFAULT_ARGS, {})()
+};
+
+const version = require(path.resolve(getRootDirectory(), 'package.json')).version;
+
+program.version(version, '-v, --version');
+
+function toggle(value: boolean, previous: boolean) {
+    return !previous;
+}
 
 /**
  * Start command
@@ -24,14 +51,18 @@ program.command('start')
     .description('Builds and runs a demo app, for testing service functionality.')
     .option(
         '-v, --providerVersion <version>',
-        'Sets the runtime version for the provider.  Defaults to "local". Options: local | staging | stable | x.y.z',
-        'local'
+        `Sets the runtime version for the provider.  Defaults to "${defaultStartArgs.mode}". Options: local | staging | stable | runtime | x.y.z`,
+        defaultStartArgs.providerVersion
     )
-    .option('-r, --runtime <version>', 'Sets the runtime version.  Options: stable | w.x.y.z')
-    .option('-m, --mode <mode>', 'Sets the webpack mode.  Defaults to "development".  Options: development | production | none', 'development')
-    .option('-n, --noDemo', 'Runs the server but will not launch the demo application.', true)
-    .option('-s, --static', 'Launches the server and application using pre-built files.', true)
-    .option('-w, --writeToDisk', 'Writes and serves the built files from disk.', true)
+    .option('-r, --runtime <version>', 'Sets the runtime version.  Options: stable | alpha | beta | canary | w.x.y.z')
+    .option(
+        '-m, --mode <mode>',
+        `Sets the webpack mode.  Defaults to "${defaultStartArgs.mode}".  Options: development | production | none`,
+        defaultStartArgs.mode
+    )
+    .option('-n, --no-demo', `Runs the server but will not launch the demo application (default: ${defaultStartArgs.noDemo})`, toggle, defaultStartArgs.noDemo)
+    .option('-s, --static', `Launches the server and application using pre-built files (default: ${defaultStartArgs.static})`, toggle, defaultStartArgs.static)
+    .option('-w, --write', `Writes and serves the built files from disk (default: ${defaultStartArgs.writeToDisk})`, toggle, defaultStartArgs.writeToDisk)
     .action(startCommandProcess);
 
 /**
@@ -111,9 +142,6 @@ program.command('plugins [action]')
     .description('Executes all runnable plugins with the supplied action')
     .action(startPluginExecutor);
 
-// Load hooks (if any)
-loadHooks();
-
 /**
  * Process CLI commands
  */
@@ -152,7 +180,7 @@ function applyCLIArgs<T>(defaultArgs: Required<T>, args: Partial<T>) {
 /**
  * Initiator for the jest int/unit tests
  */
-function startTestRunner(type: JestMode, args: CLITestArguments) {
+async function startTestRunner(type: JestMode, args: CLITestArguments) {
     const parsedArgs = applyCLIArgs<CLITestArguments>({
         providerVersion: 'testing',
         mode: 'development',
@@ -189,6 +217,8 @@ function startTestRunner(type: JestMode, args: CLITestArguments) {
         jestArgs.push(...extraArgs);
     }
 
+    await prepareRuntime(parsedArgs);
+
     if (type === 'int') {
         runIntegrationTests(jestArgs, parsedArgs);
     } else if (type === 'unit') {
@@ -202,22 +232,13 @@ function startTestRunner(type: JestMode, args: CLITestArguments) {
  * Starts the build + server process, passing in any provided CLI arguments
  */
 async function startCommandProcess(args: CLIArguments) {
-    const parsedArgs = applyCLIArgs<CLIArguments>({
-        providerVersion: 'local',
-        mode: 'development',
-        noDemo: false,
-        static: false,
-        writeToDisk: false,
-        runtime: '',
-
-        // Hooks can selectively override the above defaults. CLI args will still take precedence.
-        ...allowHook(Hook.DEFAULT_ARGS, {})()
-    }, args);
+    const parsedArgs = applyCLIArgs<CLIArguments>(defaultStartArgs, args);
 
     const server = await createServer();
     allowHook(Hook.APP_MIDDLEWARE)(server);
     await createDefaultMiddleware(server, parsedArgs);
     await startServer(server);
+    await prepareRuntime(parsedArgs);
     startApplication(parsedArgs);
 }
 
@@ -258,4 +279,56 @@ function generateTypedoc() {
     ].map((filePath) => path.resolve(filePath));
     const cmd = `"${typedocCmd}" --name "OpenFin ${config.TITLE}" --theme "${themeDir}" --out "${outDir}" --excludeNotExported --excludePrivate --excludeProtected --hideGenerator --tsconfig "${tsConfig}" --readme ${readme}`; // eslint-disable-line
     childprocess.execSync(cmd, {stdio: 'inherit'});
+}
+
+/**
+ * If using a runtime-injected service prepare an ASAR that contains the service, and create a custom version of the
+ * runtime that contains that version of the service.
+ *
+ * @param args CLI arguments for start/test command
+ */
+async function prepareRuntime(args: CLIArguments): Promise<void> {
+    if (args.providerVersion === 'runtime') {
+        const {NAME, PORT} = getProjectConfig();
+
+        if (args.static) {
+            console.log('Building ASAR (from existing build)...');
+            await execa.shell('npm run asar', {cwd: getRootDirectory()});
+        } else {
+            console.log(`Building ASAR (${args.mode} mode)...`);
+            await execa.shell(`npm run build -m ${args.mode}`, {cwd: getRootDirectory()});
+            await execa.shell('npm run asar', {cwd: getRootDirectory()});
+        }
+
+        const installDirectory = path.join(process.env.LOCALAPPDATA!, 'OpenFin/runtime');
+        const runtime: string = args.runtime || require(path.resolve(getRootDirectory(), getProviderPath())).runtime.version;
+        const customRuntime = runtime.replace(runtime.split('.')[0], PORT.toString());
+
+        if (!fs.existsSync(path.join(installDirectory, runtime))) {
+            console.log(`Runtime ${runtime} not installed, starting download`);
+
+            const connection = await connect({
+                uuid: 'temp-app',
+                runtime: {
+                    version: runtime
+                }
+            });
+            console.log(await fin.System.getAllApplications());
+            await connection.Application.getCurrentSync().quit();
+
+            console.log(`Runtime ${runtime} installed`);
+        }
+        if (!fs.existsSync(path.join(installDirectory, customRuntime))) {
+            console.log(`Runtime ${customRuntime} not prepared, starting copy`);
+
+            await fs.copy(path.join(installDirectory, runtime), path.join(installDirectory, customRuntime));
+
+            console.log(`Runtime ${customRuntime} prepared`);
+        }
+
+        console.log(`Copying ASAR to ${customRuntime}`);
+        const srcPath = path.join(getRootDirectory(), `dist/asar/${NAME}.asar`);
+        const destPath = path.join(installDirectory, customRuntime, `OpenFin/resources/${NAME}.asar`);
+        fs.copyFileSync(srcPath, destPath);
+    }
 }

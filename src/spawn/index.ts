@@ -104,7 +104,7 @@ export interface AppData<C = unknown> extends WindowData {
     useService?: boolean;
 
     /**
-     * The version of the provider to use. Either local/staging/stable, or a version number from the CDN.
+     * The version of the provider to use. Either local/staging/stable/runtime, or a version number from the CDN.
      *
      * Has no effect if `useService` is false.
      */

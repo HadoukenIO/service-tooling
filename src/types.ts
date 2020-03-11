@@ -9,6 +9,8 @@ export interface CLIArguments {
      *   Runs the latest public release of the service from the OpenFin CDN
      * - "staging"
      *   Runs the latest internal build of the service from the OpenFin CDN. May be unstable.
+     * - "runtime"
+     *   Will start the service through an ASAR baked into the runtime. Available only if ASAR_FLAG is defined within the service config.
      * - <version number>
      *   Specifiying a "x.y.z" version number will load that version of the service from the OpenFin CDN.
      */

@@ -27,14 +27,15 @@ export enum Hook {
     /**
      * Hook to override default values for the `npm start` CLI options.
      *
-     * Note that using this hook may make some of the text in `npm start --help` inaccurate.
+     * When using this hook, the help text in `npm start --help` will update accordingly, to show the new default
+     * values for each option.
      */
     DEFAULT_ARGS = 'DEFAULT_ARGS'
 }
 
 export interface HooksAPI {
-    [Hook.DEFAULT_ARGS]: () => Partial<CLIArguments>;
     [Hook.APP_MIDDLEWARE]: (app: express.Express) => void;
+    [Hook.DEFAULT_ARGS]: () => Partial<CLIArguments>;
     [Hook.TEST_MIDDLEWARE]: (app: express.Express) => void;
 }
 

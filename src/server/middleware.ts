@@ -11,12 +11,21 @@ import {getProviderUrl} from '../utils/getProviderUrl';
  */
 interface ManifestFile {
     licenseKey: string;
-    // eslint-disable-next-line
     startup_app: {
         uuid: string;
         name: string;
         url: string;
+
+        autoShow?: boolean;
+        frame?: boolean;
         icon?: string;
+        saveWindowState?: boolean;
+
+        defaultCentered?: boolean;
+        defaultLeft?: number;
+        defaultTop?: number;
+        defaultWidth?: number;
+        defaultHeight?: number;
     };
     shortcut?: {
         icon?: string;
@@ -39,7 +48,7 @@ interface ServiceDeclaration {
  * to the command-line options of this utility.
  */
 export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?: string): RequestHandler {
-    const {PORT, NAME, CDN_LOCATION, IS_SERVICE} = getProjectConfig();
+    const {PORT, NAME, CDN_LOCATION, IS_SERVICE, ASAR_FLAG} = getProjectConfig();
 
     return async (req: Request, res: Response, next: NextFunction) => {
         const configPath = req.params[0];            // app.json path, relative to 'res' dir
@@ -47,7 +56,7 @@ export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?
         const baseUrl = `http://localhost:${PORT}${component}`;
 
         // Parse app.json
-        const config: ManifestFile|void = await getJsonFile<ManifestFile>(path.resolve('res', configPath))
+        const config: ManifestFile | void = await getJsonFile<ManifestFile>(path.resolve('res', configPath))
             .catch(() => {
                 next();
             });
@@ -72,8 +81,27 @@ export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?
             shortcut.icon = shortcut.icon.replace(CDN_LOCATION, baseUrl);
         }
         if (serviceDefinition) {
-            // Replace provider manifest URL with the requested version
-            serviceDefinition.manifestUrl = getProviderUrl(providerVersion, serviceDefinition.manifestUrl);
+            if (providerVersion === 'runtime') {
+                if (!ASAR_FLAG) {
+                    throw new Error('"--providerVersion runtime" can only be used if the ASAR_FLAG config option is set within services.config.json');
+                }
+
+                // Replace service declaration with fdc3Api flag
+                (startupApp as any)[ASAR_FLAG] = true;
+
+                // Update application manifest to run on custom runtime
+                runtimeVersion = runtimeVersion || config.runtime.version;
+                runtimeVersion = runtimeVersion.replace(runtimeVersion.split('.')[0], PORT.toString());
+
+                if (config.services!.length === 1) {
+                    delete config.services;
+                } else {
+                    config.services = config.services!.filter((service) => service.name !== NAME);
+                }
+            } else {
+                // Replace provider manifest URL with the requested version
+                serviceDefinition.manifestUrl = getProviderUrl(providerVersion, serviceDefinition.manifestUrl);
+            }
         }
         if (runtimeVersion) {
             // Replace runtime version with one provided.
@@ -154,25 +182,35 @@ export function createCustomManifestMiddleware(): RequestHandler {
                 : undefined
         };
 
-        const manifest = {
+        const manifest: ManifestFile = {
             licenseKey,
             // eslint-disable-next-line
             startup_app:
                 {uuid, name, url, frame, autoShow: true, saveWindowState: false, defaultCentered, defaultLeft, defaultTop, defaultWidth, defaultHeight},
             runtime: {arguments: `--v=1${realmName ? ` --security-realm=${realmName}${enableMesh ? ' --enable-mesh' : ''}` : ''}`, version: runtime},
-            services: {},
+            services: [],
             shortcut
         };
         if (useService) {
-            const service: ServiceDeclaration = {name: `${NAME}`};
+            if (provider === 'runtime') {
+                const {ASAR_FLAG} = getProjectConfig();
 
-            if (provider !== 'default') {
-                service.manifestUrl = getProviderUrl(provider);
+                if (ASAR_FLAG) {
+                    (manifest.startup_app as any)[ASAR_FLAG] = true;
+                } else {
+                    throw new Error('"provider=runtime" can only be used if the ASAR_FLAG config option is set within services.config.json');
+                }
+            } else {
+                const service: ServiceDeclaration = {name: NAME};
+
+                if (provider !== 'default') {
+                    service.manifestUrl = getProviderUrl(provider);
+                }
+                if (config) {
+                    service.config = JSON.parse(config!);
+                }
+                manifest.services = [service];
             }
-            if (config) {
-                service.config = JSON.parse(config!);
-            }
-            manifest.services = [service];
         }
 
         // Return modified JSON to client

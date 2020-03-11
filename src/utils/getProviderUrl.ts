@@ -1,5 +1,5 @@
 import {existsSync} from 'fs';
-import {join} from 'path';
+import {join, resolve} from 'path';
 
 import {getProjectConfig} from './getProjectConfig';
 import {getRootDirectory} from './getRootDirectory';
@@ -7,12 +7,25 @@ import {getRootDirectory} from './getRootDirectory';
 let url: string|null = null;
 
 /**
+ * Returns an absolute path to the provider's manifest.
+ *
+ * This is the local file within the project codebase, use {@link getProviderUrl} to get a reference to the provider
+ * manifest that is usable within a manifest or from a fetch.
+ */
+export function getProviderPath(): string {
+    const {IS_SERVICE} = getProjectConfig();
+    const manifestPath = IS_SERVICE ? './res/provider/app.json' : './res/app.json';
+
+    return resolve(getRootDirectory(), manifestPath);
+}
+
+/**
  * Returns the URL of the manifest file for the requested version of the service.
  *
  * @param {string} version Version number of the service, or a channel
  * @param {string} manifestUrl The URL that was set in the application manifest (if any). Any querystring arguments will be persisted, but the rest of the URL will be ignored.
  */
-export function getProviderUrl(version: string, manifestUrl?: string) {
+export function getProviderUrl(version: string, manifestUrl?: string): string | undefined {
     if (url) {
         return url;
     }
@@ -38,6 +51,9 @@ export function getProviderUrl(version: string, manifestUrl?: string) {
         // Use the latest staging build
         url = `${CDN_LOCATION}/app.staging.json${query}`;
         return url;
+    } else if (version === 'runtime') {
+        // App will use the provider that is baked-in to the runtime, there is no explicit manifest for this provider.
+        return undefined;
     } else if (version === 'testing') {
         // Use the optional testing provider if exists.
         const testingProviderResponse = existsSync(join(getRootDirectory(), 'res/test/provider.json'));

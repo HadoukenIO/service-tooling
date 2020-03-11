@@ -1,4 +1,4 @@
-import {platform} from 'os';
+import * as os from 'os';
 
 import * as express from 'express';
 import {connect, launch} from 'hadouken-js-adapter';
@@ -62,7 +62,7 @@ export async function createDefaultMiddleware(app: express.Express, args: CLIArg
 export async function startServer(app: express.Express) {
     const {PORT} = getProjectConfig();
 
-    console.log('Starting application server...');
+    console.log(`Starting application server on port ${PORT}...`);
     return app.listen(PORT);
 }
 
@@ -73,11 +73,14 @@ export async function startApplication(args: CLIArguments) {
     const {IS_SERVICE} = getProjectConfig();
 
     // Manually start service on Mac OS (no RVM support)
-    if (IS_SERVICE && platform() === 'darwin') {
+    if (IS_SERVICE && os.platform() === 'darwin') {
         console.log('Starting Provider for Mac OS');
 
         // Launch latest stable version of the service
-        await launch({manifestUrl: getProviderUrl(args.providerVersion)}).catch(console.log);
+        const manifestUrl = getProviderUrl(args.providerVersion);
+        if (manifestUrl) {
+            await launch({manifestUrl}).catch(console.log);
+        }
     }
 
     // Launch application, if requested to do so

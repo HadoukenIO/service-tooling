@@ -3,9 +3,10 @@ import * as MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import * as webpack from 'webpack';
 import * as ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 
+import {getRootDirectory} from '../utils/getRootDirectory';
 import {getProjectConfig} from '../utils/getProjectConfig';
 import {getProjectPackageJson} from '../utils/getProjectPackageJson';
-import {getRootDirectory} from '../utils/getRootDirectory';
+import {getProviderPath} from '../utils/getProviderUrl';
 
 /**
  * Custom options which can be passed into webpack.
@@ -149,10 +150,10 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
  * Will be removed once the RVM supports relative paths within app.json files
  */
 export const manifestPlugin = (() => {
-    const {NAME, PORT, IS_SERVICE} = getProjectConfig();
+    const {NAME, PORT} = getProjectConfig();
 
     return new CopyWebpackPlugin([{
-        from: IS_SERVICE ? './res/provider/app.json' : './res/app.json',
+        from: getProviderPath(),
         to: '.',
         transform: (content) => {
             const config = JSON.parse(content.toString());
