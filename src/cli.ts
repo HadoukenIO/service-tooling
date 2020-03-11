@@ -38,7 +38,7 @@ const defaultStartArgs: Required<CLIArguments> = {
 
 const version = require(path.resolve(getRootDirectory(), 'package.json')).version;
 
-program.version(version, '-v, --version');
+program.version(version);
 
 function toggle(value: boolean, previous: boolean) {
     return !previous;
@@ -305,25 +305,22 @@ async function prepareRuntime(args: CLIArguments): Promise<void> {
         const customRuntime = runtime.replace(runtime.split('.')[0], PORT.toString());
 
         if (!fs.existsSync(path.join(installDirectory, runtime))) {
-            console.log(`Runtime ${runtime} not installed, starting download`);
+            console.log(`Runtime ${runtime} not installed, starting download...`);
 
+            // Use the JS adapter to start an application on this runtime, then immediately exit
             const connection = await connect({
                 uuid: 'temp-app',
                 runtime: {
                     version: runtime
                 }
             });
-            console.log(await fin.System.getAllApplications());
-            await connection.Application.getCurrentSync().quit();
-
-            console.log(`Runtime ${runtime} installed`);
+            await connection['wire'].wire.shutdown();
         }
         if (!fs.existsSync(path.join(installDirectory, customRuntime))) {
-            console.log(`Runtime ${customRuntime} not prepared, starting copy`);
+            console.log(`Runtime ${customRuntime} not found, starting copy...`);
 
+            // Create a copy of this runtime. We do not want to modify the original installation, to avoid breaking other apps.
             await fs.copy(path.join(installDirectory, runtime), path.join(installDirectory, customRuntime));
-
-            console.log(`Runtime ${customRuntime} prepared`);
         }
 
         console.log(`Copying ASAR to ${customRuntime}`);

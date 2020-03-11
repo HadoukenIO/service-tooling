@@ -47,7 +47,7 @@ export function loadHooks(): void {
         if (!fs.existsSync(hooksPathOut) || fs.statSync(hooksPathSrc).mtime > fs.statSync(hooksPathOut).mtime) {
             console.log('Building hooks...');
             try {
-                execa.sync('tsc', [hooksPathSrc, '--outDir', path.dirname(hooksPathOut), '--moduleResolution', 'node'], {stdio: 'pipe'});
+                execa.sync('./node_modules/.bin/tsc', [hooksPathSrc, '--outDir', path.dirname(hooksPathOut), '--moduleResolution', 'node'], {stdio: 'pipe'});
             } catch (e) {
                 console.error(`Error building hooks:\n${e.stdout}`);
 
