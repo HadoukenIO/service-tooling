@@ -2,11 +2,10 @@ import * as os from 'os';
 
 import * as express from 'express';
 import {connect, launch} from 'hadouken-js-adapter';
-import fetch from 'node-fetch';
 
 import {CLIArguments} from '../types';
 import {getProjectConfig} from '../utils/getProjectConfig';
-import {getProviderUrl} from '../utils/getProviderUrl';
+import {getProviderUrl, getManifest} from '../utils/manifest';
 import {getRootDirectory} from '../utils/getRootDirectory';
 import {executeWebpack} from '../webpack/executeWebpack';
 
@@ -34,7 +33,7 @@ export async function createServer() {
 export async function createDefaultMiddleware(app: express.Express, args: CLIArguments) {
     // Add special route for any 'app.json' files - will re-write the contents
     // according to the command-line arguments of this server
-    app.use(/\/?(.*\.json)/, createAppJsonMiddleware(args.providerVersion, args.runtime));
+    app.use(/\/?(.*\.json)/, createAppJsonMiddleware(args));
 
     // Add endpoint for creating new application manifests from scratch.
     // Used within demo app for lauching 'custom' applications
@@ -47,7 +46,7 @@ export async function createDefaultMiddleware(app: express.Express, args: CLIArg
     } else {
         // Run application using webpack-dev-middleware. Will build app before launching, and watch
         // for any source file changes
-        app.use(await executeWebpack(args.mode, args.writeToDisk));
+        app.use(await executeWebpack(args.mode, args.write));
     }
 
     // Add route for serving static resources
@@ -84,11 +83,11 @@ export async function startApplication(args: CLIArguments) {
     }
 
     // Launch application, if requested to do so
-    if (!args.noDemo) {
+    if (args.demo) {
         console.log('Launching application');
 
         const manifestUrl = getStartupManifest();
-        if (IS_SERVICE) {
+        if (IS_SERVICE && !args.asar) {
             // Launch demo app, terminate when the service closes
             startAppAndWait(manifestUrl, getProviderUrl(args.providerVersion));
         } else {
@@ -125,23 +124,15 @@ async function startAppAndWait(manifestUrl: string, exitManifestUrl?: string): P
     const {NAME} = getProjectConfig();
 
     exitManifestUrl = exitManifestUrl || manifestUrl;
-    const fetchRequest = await fetch(exitManifestUrl).catch((err: string) => {
-        throw new Error(err);
-    });
+    const manifest = await getManifest(exitManifestUrl);
+    const uuid: string = manifest.startup_app.uuid;
 
-    if (fetchRequest.status === 200) {
-        const manifest = await fetchRequest.json();
-        const uuid: string = manifest.startup_app.uuid;
+    connect({uuid: `wrapper-${NAME}`, manifestUrl}).then(async (fin) => {
+        const app = fin.Application.wrapSync({uuid});
 
-        connect({uuid: `wrapper-${NAME}`, manifestUrl}).then(async (fin) => {
-            const app = fin.Application.wrapSync({uuid});
-
-            // Terminate local server when the provider closes
-            app.addListener('closed', async () => {
-                process.exit(0);
-            }).catch(console.error);
-        }, console.error);
-    } else {
-        throw new Error(`Invalid response from server: Status code: ${fetchRequest.status}`);
-    }
+        // Terminate local server when the provider closes
+        app.addListener('closed', async () => {
+            process.exit(0);
+        }).catch(console.error);
+    }, console.error);
 }

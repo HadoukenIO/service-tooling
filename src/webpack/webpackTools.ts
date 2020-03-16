@@ -6,7 +6,7 @@ import * as ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 import {getRootDirectory} from '../utils/getRootDirectory';
 import {getProjectConfig} from '../utils/getProjectConfig';
 import {getProjectPackageJson} from '../utils/getProjectPackageJson';
-import {getProviderPath} from '../utils/getProviderUrl';
+import {getProviderPath} from '../utils/manifest';
 
 /**
  * Custom options which can be passed into webpack.

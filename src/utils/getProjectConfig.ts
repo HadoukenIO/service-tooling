@@ -32,12 +32,16 @@ interface ConfigFile {
     CDN_LOCATION: string;
 
     /**
-     * If using this service through runtime injection, this option defines the property that must be added to the
-     * applications manifest in order to enable the runtime injection of the client library.
+     * Indicates if this service supports runtime injection - meaning that this is a service that can be started via
+     * ASAR by the runtime. This replaces the RVM-managed service model (though that method is still supported).
      *
-     * This option is required in order to use 'runtime' as the --providerVersion argument.
+     * This option is required in order to use the --asar option on the 'npm start' and 'npm run test' commands. Do not
+     * use this parameter to control the startup method on a case-by-case basis, use the --asar argument for that
+     * (which is supported by both 'start' and 'test int').
+     *
+     * When enabled, three additional parameters are supported within the 'startup_app' section of a manifest. Each is prefixed
      */
-    ASAR_FLAG?: string;
+    RUNTIME_INJECTABLE?: boolean;
 
     /**
      * The manifest to use when starting the application. Allows overriding of the demo app manifest location.

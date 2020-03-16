@@ -18,12 +18,14 @@ export enum Hook {
      * Any middleware added via this hook will take precedence over the "built-in" middleware.
      */
     APP_MIDDLEWARE = 'APP_MIDDLEWARE',
+
     /**
      * Register middleware with the local server that runs during integration tests.
      *
      * Any middleware added via this hook will take precedence over the "built-in" middleware.
      */
     TEST_MIDDLEWARE = 'TEST_MIDDLEWARE',
+
     /**
      * Hook to override default values for the `npm start` CLI options.
      *
@@ -34,9 +36,9 @@ export enum Hook {
 }
 
 export interface HooksAPI {
-    [Hook.APP_MIDDLEWARE]: (app: express.Express) => void;
+    [Hook.APP_MIDDLEWARE]: (app: express.Express) => void | Promise<void>;
     [Hook.DEFAULT_ARGS]: () => Partial<CLIArguments>;
-    [Hook.TEST_MIDDLEWARE]: (app: express.Express) => void;
+    [Hook.TEST_MIDDLEWARE]: (app: express.Express) => void | Promise<void>;
 }
 
 export function loadHooks(): void {
@@ -47,7 +49,15 @@ export function loadHooks(): void {
         if (!fs.existsSync(hooksPathOut) || fs.statSync(hooksPathSrc).mtime > fs.statSync(hooksPathOut).mtime) {
             console.log('Building hooks...');
             try {
-                execa.sync('./node_modules/.bin/tsc', [hooksPathSrc, '--outDir', path.dirname(hooksPathOut), '--moduleResolution', 'node'], {stdio: 'pipe'});
+                execa.sync('./node_modules/.bin/tsc', [
+                    hooksPathSrc,
+                    '--outDir',
+                    path.dirname(hooksPathOut),
+                    '--moduleResolution',
+                    'node',
+                    '--target',
+                    'es5'
+                ], {stdio: 'pipe'});
             } catch (e) {
                 console.error(`Error building hooks:\n${e.stdout}`);
 

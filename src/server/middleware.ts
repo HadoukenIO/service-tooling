@@ -4,7 +4,8 @@ import {NextFunction, Request, RequestHandler, Response} from 'express-serve-sta
 
 import {getJsonFile} from '../utils/getJsonFile';
 import {getProjectConfig} from '../utils/getProjectConfig';
-import {getProviderUrl} from '../utils/getProviderUrl';
+import {getProviderUrl} from '../utils/manifest';
+import {CLIArguments} from '../types';
 
 /**
  * Quick implementation on the app.json, for the pieces we use.
@@ -37,6 +38,21 @@ interface ManifestFile {
     services?: ServiceDeclaration[];
 }
 
+/**
+ * Applications using a RUNTIME_INJECTION-enabled service may declare extra paramters in their startup_app definition.
+ *
+ * The naming of these parameters are service-specific:
+ * - <NAME>Api: boolean
+ *   This option enables the injection of the service client into the windows of this application.
+ * - <NAME>Config: object (service-specific configuration object)
+ *   An optional object that contains service-specific configuration data. This is equivilant to the 'config' property
+ *   within existing service declarations.
+ * - <NAME>Manifest: string (Manifest URL)
+ *   An undocumented property for internal use only. Specifies the URL to a manifest file, which the service provider
+ *   will use as if it were its own. Applies only to the loading of desktop-level config data.
+ */
+type StartupAppWithInjection = ManifestFile['startup_app'] & {[key: string]: any};
+
 interface ServiceDeclaration {
     name: string;
     manifestUrl?: string;
@@ -47,8 +63,10 @@ interface ServiceDeclaration {
  * Creates express-compatible middleware function that will add/replace any URL's found within app.json files according
  * to the command-line options of this utility.
  */
-export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?: string): RequestHandler {
-    const {PORT, NAME, CDN_LOCATION, IS_SERVICE, ASAR_FLAG} = getProjectConfig();
+export function createAppJsonMiddleware(args: Pick<CLIArguments, 'providerVersion' | 'asar' | 'runtime'>): RequestHandler {
+    const {providerVersion, asar, runtime} = args;
+    const {PORT, NAME, CDN_LOCATION, IS_SERVICE, RUNTIME_INJECTABLE} = getProjectConfig();
+    let runtimeVersion = runtime;
 
     return async (req: Request, res: Response, next: NextFunction) => {
         const configPath = req.params[0];            // app.json path, relative to 'res' dir
@@ -81,15 +99,15 @@ export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?
             shortcut.icon = shortcut.icon.replace(CDN_LOCATION, baseUrl);
         }
         if (serviceDefinition) {
-            if (providerVersion === 'runtime') {
-                if (!ASAR_FLAG) {
-                    throw new Error('"--providerVersion runtime" can only be used if the ASAR_FLAG config option is set within services.config.json');
+            if (asar) {
+                if (!RUNTIME_INJECTABLE) {
+                    throw new Error('"--asar" can only be used if the RUNTIME_INJECTABLE config option is set within services.config.json');
                 }
 
                 // Replace service declaration with fdc3Api flag
-                (startupApp as any)[ASAR_FLAG] = true;
+                annotateAppWithService(startupApp, serviceDefinition, args.providerVersion);
 
-                // Update application manifest to run on custom runtime
+                // Will need to run on a custom runtime version for ASAR to contain the latest provider code
                 runtimeVersion = runtimeVersion || config.runtime.version;
                 runtimeVersion = runtimeVersion.replace(runtimeVersion.split('.')[0], PORT.toString());
 
@@ -146,6 +164,7 @@ export function createCustomManifestMiddleware(): RequestHandler {
             enableMesh,
             runtime,
             useService,
+            asar,
             provider,
             config,
             licenseKey,
@@ -167,6 +186,7 @@ export function createCustomManifestMiddleware(): RequestHandler {
             frame: req.query.frame !== 'false',
             enableMesh: req.query.enableMesh !== 'false',
             useService: req.query.useService !== 'false',
+            asar: req.query.asar === 'true',
             defaultCentered: req.query.defaultCentered === 'true',
             defaultLeft: Number.parseInt(req.query.defaultLeft, 10) || 860,
             defaultTop: Number.parseInt(req.query.defaultTop, 10) || 605,
@@ -192,13 +212,13 @@ export function createCustomManifestMiddleware(): RequestHandler {
             shortcut
         };
         if (useService) {
-            if (provider === 'runtime') {
-                const {ASAR_FLAG} = getProjectConfig();
+            if (asar) {
+                const {RUNTIME_INJECTABLE} = getProjectConfig();
 
-                if (ASAR_FLAG) {
-                    (manifest.startup_app as any)[ASAR_FLAG] = true;
+                if (RUNTIME_INJECTABLE) {
+                    annotateAppWithService(manifest.startup_app, {name: NAME, config: config!}, provider);
                 } else {
-                    throw new Error('"provider=runtime" can only be used if the ASAR_FLAG config option is set within services.config.json');
+                    throw new Error('"asar=true" can only be used if the RUNTIME_INJECTABLE config option is set within services.config.json');
                 }
             } else {
                 const service: ServiceDeclaration = {name: NAME};
@@ -217,4 +237,17 @@ export function createCustomManifestMiddleware(): RequestHandler {
         res.header('Content-Type', 'application/json; charset=utf-8');
         res.send(JSON.stringify(manifest, null, 4));
     };
+}
+
+function annotateAppWithService(application: ManifestFile['startup_app'], service: ServiceDeclaration, providerVersion: string): void {
+    const {NAME} = getProjectConfig();
+    const injectableApp: StartupAppWithInjection = application;
+
+    injectableApp[`${NAME}Api`] = true;
+    if (service.config) {
+        injectableApp[`${NAME}Config`] = service.config;
+    }
+    if (!['default', 'stable'].includes(providerVersion)) {
+        injectableApp[`${NAME}Manifest`] = getProviderUrl(providerVersion, service.manifestUrl);
+    }
 }
