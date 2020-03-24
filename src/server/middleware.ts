@@ -11,7 +11,9 @@ import {getProviderUrl} from '../utils/getProviderUrl';
  * Creates express-compatible middleware function that will add/replace any URL's found within app.json files according
  * to the command-line options of this utility.
  */
-export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?: string): RequestHandler {
+export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?: string, platform: boolean = false): RequestHandler {
+    const {PORT, NAME, CDN_LOCATION} = getProjectConfig();
+
     return async (req: Request, res: Response, next: NextFunction) => {
         const configPath = req.params[0];            // app.json path, relative to 'res' dir
 
