@@ -4,34 +4,7 @@ import {getProjectConfig} from './getProjectConfig';
 import {getJsonFileSync} from './getJsonFile';
 import {getProviderUrl} from './getProviderUrl';
 import {replaceUrlParams} from './url';
-
-/**
- * Quick implementation on the app.json, for the pieces we use.
- */
-export interface ManifestFile {
-    licenseKey: string;
-    startup_app: {
-        uuid: string;
-        name: string;
-        url: string;
-        autoShow?: boolean;
-        icon?: string;
-    };
-    shortcut?: {
-        icon?: string;
-    };
-    runtime: {
-        arguments?: string;
-        version: string;
-    };
-    services?: ServiceDeclaration[];
-}
-
-export interface ServiceDeclaration {
-    name: string;
-    manifestUrl?: string;
-    config?: {};
-}
+import {ManifestFile, PlatformManifest} from './manifests';
 
 export enum RewriteContext {
     /**
@@ -93,3 +66,55 @@ export function getManifest(configPath: string, context: RewriteContext, provide
 
     return config;
 }
+
+/**
+ * Convert a Classic manifest into a Platform manifest.
+ */
+export function getPlatformManifest(manifest: ManifestFile): PlatformManifest {
+    const {uuid, name, url, icon = ''} = manifest.startup_app;
+
+    const platformConfig: PlatformManifest = {
+        licenseKey: manifest.licenseKey,
+        platform: {
+            uuid,
+            applicationIcon: icon,
+            // This should be false to hide the Platform provider
+            autoShow: false,
+            defaultWindowOptions: {
+                contextMenu: true
+            }
+        },
+        snapshot: {
+            windows: [
+                {
+                    defaultWidth: manifest.startup_app.defaultWidth ?? 600,
+                    defaultHeight: manifest.startup_app.defaultHeight ?? 600,
+                    autoShow: manifest.startup_app.autoShow ?? true,
+                    layout: {
+                        content: [
+                            {
+                                type: 'stack',
+                                content: [
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: {
+                                            name,
+                                            url
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        runtime: manifest.runtime,
+        services: manifest.services
+
+    };
+
+    return platformConfig;
+}
+

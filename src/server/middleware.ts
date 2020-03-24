@@ -3,19 +3,19 @@ import * as path from 'path';
 import {NextFunction, Request, RequestHandler, Response} from 'express-serve-static-core';
 
 import {getJsonFile} from '../utils/getJsonFile';
-import {getManifest, ManifestFile, ServiceDeclaration, RewriteContext} from '../utils/getManifest';
 import {getProjectConfig} from '../utils/getProjectConfig';
 import {getProviderUrl} from '../utils/getProviderUrl';
+import {ManifestFile, PlatformManifest, ServiceDeclaration} from '../utils/manifests';
+import {getManifest, RewriteContext, getPlatformManifest} from '../utils/getManifest';
 
 /**
  * Creates express-compatible middleware function that will add/replace any URL's found within app.json files according
  * to the command-line options of this utility.
  */
 export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?: string, platform: boolean = false): RequestHandler {
-    const {PORT, NAME, CDN_LOCATION} = getProjectConfig();
-
     return async (req: Request, res: Response, next: NextFunction) => {
         const configPath = req.params[0];            // app.json path, relative to 'res' dir
+        const isProvider = configPath.includes('provider.json');
 
         // Parse app.json
         let config: ManifestFile;
@@ -31,9 +31,14 @@ export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?
             config.startup_app.autoShow = true;
         }
 
+        let finalConfig: ManifestFile | PlatformManifest = config;
+        if (platform && !isProvider) {
+            finalConfig = getPlatformManifest(config);
+        }
+
         // Return modified JSON to client
         res.header('Content-Type', 'application/json; charset=utf-8');
-        res.send(JSON.stringify(config, null, 4));
+        res.send(JSON.stringify(finalConfig, null, 4));
     };
 }
 
@@ -131,3 +136,4 @@ export function createCustomManifestMiddleware(): RequestHandler {
         res.send(JSON.stringify(manifest, null, 4));
     };
 }
+
