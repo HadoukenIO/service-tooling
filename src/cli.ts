@@ -218,7 +218,7 @@ async function startCommandProcess(args: CLIArguments) {
     }, args);
 
     const server = await createServer();
-    allowHook(Hook.APP_MIDDLEWARE)(server);
+    allowHook(Hook.APP_MIDDLEWARE)(server, parsedArgs);
     await createDefaultMiddleware(server, parsedArgs);
     await startServer(server);
     startApplication(parsedArgs);
