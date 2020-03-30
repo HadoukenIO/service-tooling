@@ -15,7 +15,7 @@ import {getManifest, RewriteContext, getPlatformManifest} from '../utils/getMani
 export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?: string, platform: boolean = false): RequestHandler {
     return async (req: Request, res: Response, next: NextFunction) => {
         const configPath = req.params[0];            // app.json path, relative to 'res' dir
-        const isProvider = configPath.includes('provider.json');
+        const isProvider = configPath.includes('provider');
 
         // Parse app.json
         let config: ManifestFile;
