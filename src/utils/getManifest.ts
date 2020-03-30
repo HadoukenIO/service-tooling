@@ -4,7 +4,7 @@ import {getProjectConfig} from './getProjectConfig';
 import {getJsonFileSync} from './getJsonFile';
 import {getProviderUrl} from './getProviderUrl';
 import {replaceUrlParams} from './url';
-import {ManifestFile, PlatformManifest} from './manifests';
+import {ClassicManifest, PlatformManifest} from './manifests';
 
 export enum RewriteContext {
     /**
@@ -30,12 +30,12 @@ export enum RewriteContext {
  * @param providerVersion The requested provider version or service inclusion method
  * @param runtimeVersion An optional runtime version override
  */
-export function getManifest(configPath: string, context: RewriteContext, providerVersion: string, runtimeVersion?: string): ManifestFile {
+export function getManifest(configPath: string, context: RewriteContext, providerVersion: string, runtimeVersion?: string): ClassicManifest {
     const {PORT, NAME, CDN_LOCATION, IS_SERVICE} = getProjectConfig();
 
     const component = IS_SERVICE ? `/${configPath.split('/')[0]}` : '';  // client, provider or demo
     const baseUrl = context === RewriteContext.DEBUG ? `http://localhost:${PORT}${component}` : CDN_LOCATION;
-    const config: ManifestFile | void = getJsonFileSync<ManifestFile>(path.resolve('res', configPath));
+    const config: ClassicManifest | void = getJsonFileSync<ClassicManifest>(path.resolve('res', configPath));
 
     if (!config || !config.startup_app) {
         throw new Error(`${configPath} is not an app manifest`);
@@ -70,7 +70,7 @@ export function getManifest(configPath: string, context: RewriteContext, provide
 /**
  * Convert a Classic manifest into a Platform manifest.
  */
-export function getPlatformManifest(manifest: ManifestFile): PlatformManifest {
+export function getPlatformManifest(manifest: ClassicManifest): PlatformManifest {
     const {uuid, name, url, icon = ''} = manifest.startup_app;
 
     const platformConfig: PlatformManifest = {

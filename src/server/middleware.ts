@@ -5,7 +5,7 @@ import {NextFunction, Request, RequestHandler, Response} from 'express-serve-sta
 import {getJsonFile} from '../utils/getJsonFile';
 import {getProjectConfig} from '../utils/getProjectConfig';
 import {getProviderUrl} from '../utils/getProviderUrl';
-import {ManifestFile, PlatformManifest, ServiceDeclaration} from '../utils/manifests';
+import {ClassicManifest, ServiceDeclaration, Manifest} from '../utils/manifests';
 import {getManifest, RewriteContext, getPlatformManifest} from '../utils/getManifest';
 
 /**
@@ -18,7 +18,7 @@ export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?
         const isProvider = configPath.toLowerCase().includes('provider');
 
         // Parse app.json
-        let config: ManifestFile;
+        let config: ClassicManifest;
         try {
             config = getManifest(configPath, RewriteContext.DEBUG, providerVersion, runtimeVersion);
         } catch (e) {
@@ -31,7 +31,7 @@ export function createAppJsonMiddleware(providerVersion: string, runtimeVersion?
             config.startup_app.autoShow = true;
         }
 
-        let finalConfig: ManifestFile | PlatformManifest = config;
+        let finalConfig: Manifest = config;
         if (platform && !isProvider) {
             finalConfig = getPlatformManifest(config);
         }
@@ -52,7 +52,7 @@ export function createCustomManifestMiddleware(): RequestHandler {
     const {PORT, NAME} = getProjectConfig();
 
     return async (req, res, next) => {
-        const defaultConfig = await getJsonFile<ManifestFile>(path.resolve('./res/demo/app.json')).catch(next);
+        const defaultConfig = await getJsonFile<ClassicManifest>(path.resolve('./res/demo/app.json')).catch(next);
 
         if (!defaultConfig) {
             return;

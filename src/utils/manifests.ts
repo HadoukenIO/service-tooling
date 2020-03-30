@@ -1,9 +1,11 @@
 import {WindowOption} from 'openfin/_v2/api/window/windowOption';
 
+export type Manifest = ClassicManifest | PlatformManifest;
+
 /**
  * Quick implementation on the app.json, for the pieces we use.
  */
-export interface ManifestFile {
+export interface ClassicManifest {
     licenseKey: string;
     startup_app: {
         uuid: string;
