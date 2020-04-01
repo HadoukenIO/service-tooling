@@ -3,132 +3,43 @@ import * as path from 'path';
 import {NextFunction, Request, RequestHandler, Response} from 'express-serve-static-core';
 
 import {getJsonFile} from '../utils/getJsonFile';
+import {getManifest, RewriteContext, getPlatformManifest, annotateAppWithService} from '../utils/getManifest';
 import {getProjectConfig} from '../utils/getProjectConfig';
 import {getProviderUrl} from '../utils/manifest';
+import {ClassicManifest, ServiceDeclaration, Manifest} from '../utils/manifests';
 import {CLIArguments} from '../types';
-
-/**
- * Quick implementation on the app.json, for the pieces we use.
- */
-interface ManifestFile {
-    licenseKey: string;
-    startup_app: {
-        uuid: string;
-        name: string;
-        url: string;
-
-        autoShow?: boolean;
-        frame?: boolean;
-        icon?: string;
-        saveWindowState?: boolean;
-
-        defaultCentered?: boolean;
-        defaultLeft?: number;
-        defaultTop?: number;
-        defaultWidth?: number;
-        defaultHeight?: number;
-    };
-    shortcut?: {
-        icon?: string;
-    };
-    runtime: {
-        arguments?: string;
-        version: string;
-    };
-    services?: ServiceDeclaration[];
-}
-
-/**
- * Applications using a RUNTIME_INJECTION-enabled service may declare extra paramters in their startup_app definition.
- *
- * The naming of these parameters are service-specific:
- * - <NAME>Api: boolean
- *   This option enables the injection of the service client into the windows of this application.
- * - <NAME>Config: object (service-specific configuration object)
- *   An optional object that contains service-specific configuration data. This is equivilant to the 'config' property
- *   within existing service declarations.
- * - <NAME>Manifest: string (Manifest URL)
- *   An undocumented property for internal use only. Specifies the URL to a manifest file, which the service provider
- *   will use as if it were its own. Applies only to the loading of desktop-level config data.
- */
-type StartupAppWithInjection = ManifestFile['startup_app'] & {[key: string]: any};
-
-interface ServiceDeclaration {
-    name: string;
-    manifestUrl?: string;
-    config?: {};
-}
 
 /**
  * Creates express-compatible middleware function that will add/replace any URL's found within app.json files according
  * to the command-line options of this utility.
  */
-export function createAppJsonMiddleware(args: Pick<CLIArguments, 'providerVersion' | 'asar' | 'runtime'>): RequestHandler {
-    const {providerVersion, asar, runtime} = args;
-    const {PORT, NAME, CDN_LOCATION, IS_SERVICE, RUNTIME_INJECTABLE} = getProjectConfig();
-    let runtimeVersion = runtime;
-
+export function createAppJsonMiddleware(args: Pick<CLIArguments, 'providerVersion' | 'asar' | 'runtime' | 'platform'>): RequestHandler {
     return async (req: Request, res: Response, next: NextFunction) => {
         const configPath = req.params[0];            // app.json path, relative to 'res' dir
-        const component = IS_SERVICE ? `/${configPath.split('/')[0]}` : '';  // client, provider or demo
-        const baseUrl = `http://localhost:${PORT}${component}`;
+        const isProvider = configPath.toLowerCase().includes('provider');
 
         // Parse app.json
-        const config: ManifestFile | void = await getJsonFile<ManifestFile>(path.resolve('res', configPath))
-            .catch(() => {
-                next();
-            });
-
-        if (!config || !config.startup_app) {
+        let config: ClassicManifest;
+        try {
+            config = getManifest(configPath, RewriteContext.DEBUG, args);
+        } catch (e) {
             next();
             return;
         }
 
-        const serviceDefinition = (config.services || []).find((service) => service.name === NAME);
-        const {startup_app: startupApp, shortcut} = config;
-
-        // Edit manifest
-        if (startupApp.url) {
-            // Replace startup app with HTML served locally
-            startupApp.url = startupApp.url.replace(CDN_LOCATION, baseUrl);
+        // If this is the provider manifest, ensure window is always visible
+        if (configPath.indexOf('/provider/') && config.startup_app?.autoShow === false) {
+            config.startup_app.autoShow = true;
         }
-        if (startupApp.icon) {
-            startupApp.icon = startupApp.icon.replace(CDN_LOCATION, baseUrl);
-        }
-        if (shortcut && shortcut.icon) {
-            shortcut.icon = shortcut.icon.replace(CDN_LOCATION, baseUrl);
-        }
-        if (serviceDefinition) {
-            if (asar) {
-                if (!RUNTIME_INJECTABLE) {
-                    throw new Error('"--asar" can only be used if the RUNTIME_INJECTABLE config option is set within services.config.json');
-                }
 
-                // Replace service declaration with fdc3Api flag
-                annotateAppWithService(startupApp, serviceDefinition, args.providerVersion);
-
-                // Will need to run on a custom runtime version for ASAR to contain the latest provider code
-                runtimeVersion = runtimeVersion || config.runtime.version;
-                runtimeVersion = runtimeVersion.replace(runtimeVersion.split('.')[0], PORT.toString());
-
-                if (config.services!.length === 1) {
-                    delete config.services;
-                } else {
-                    config.services = config.services!.filter((service) => service.name !== NAME);
-                }
-            } else {
-                // Replace provider manifest URL with the requested version
-                serviceDefinition.manifestUrl = getProviderUrl(providerVersion, serviceDefinition.manifestUrl);
-            }
-        }
-        if (runtimeVersion) {
-            // Replace runtime version with one provided.
-            config.runtime.version = runtimeVersion;
+        let finalConfig: Manifest = config;
+        if (args.platform && !isProvider) {
+            finalConfig = getPlatformManifest(config);
         }
 
         // Return modified JSON to client
         res.header('Content-Type', 'application/json; charset=utf-8');
-        res.send(JSON.stringify(config, null, 4));
+        res.send(JSON.stringify(finalConfig, null, 4));
     };
 }
 
@@ -142,7 +53,7 @@ export function createCustomManifestMiddleware(): RequestHandler {
     const {PORT, NAME} = getProjectConfig();
 
     return async (req, res, next) => {
-        const defaultConfig = await getJsonFile<ManifestFile>(path.resolve('./res/demo/app.json')).catch(next);
+        const defaultConfig = await getJsonFile<ClassicManifest>(path.resolve('./res/demo/app.json')).catch(next);
 
         if (!defaultConfig) {
             return;
@@ -202,10 +113,9 @@ export function createCustomManifestMiddleware(): RequestHandler {
                 : undefined
         };
 
-        const manifest: ManifestFile = {
+        const manifest: ClassicManifest = {
             licenseKey,
-            // eslint-disable-next-line
-            startup_app:
+            startup_app: // eslint-disable-line @typescript-eslint/camelcase
                 {uuid, name, url, frame, autoShow: true, saveWindowState: false, defaultCentered, defaultLeft, defaultTop, defaultWidth, defaultHeight},
             runtime: {arguments: `--v=1${realmName ? ` --security-realm=${realmName}${enableMesh ? ' --enable-mesh' : ''}` : ''}`, version: runtime},
             services: [],
@@ -239,15 +149,3 @@ export function createCustomManifestMiddleware(): RequestHandler {
     };
 }
 
-function annotateAppWithService(application: ManifestFile['startup_app'], service: ServiceDeclaration, providerVersion: string): void {
-    const {NAME} = getProjectConfig();
-    const injectableApp: StartupAppWithInjection = application;
-
-    injectableApp[`${NAME}Api`] = true;
-    if (service.config) {
-        injectableApp[`${NAME}Config`] = service.config;
-    }
-    if (!['default', 'stable'].includes(providerVersion)) {
-        injectableApp[`${NAME}Manifest`] = getProviderUrl(providerVersion, service.manifestUrl);
-    }
-}

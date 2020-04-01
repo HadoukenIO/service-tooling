@@ -30,6 +30,7 @@ const defaultStartArgs: Required<CLIArguments> = {
     static: false,
     write: false,
     runtime: '',
+    platform: false,
 
     // Hooks can selectively override the above defaults. CLI args will still take precedence.
     ...allowHook(Hook.DEFAULT_ARGS, {})()
@@ -65,6 +66,7 @@ program.command('start')
         'If specified, will override the runtime version of every manifest within the project.  Options: stable | alpha | beta | canary | w.x.y.z'
     )
     .option('-m, --mode <mode>', 'Sets the webpack mode.  Options: development | production | none', defaultStartArgs.mode)
+    .option('-p, --platform [enabled]', 'Run the application in a platform window.', asBoolean, defaultStartArgs.platform)
     .option('-d, --demo [enabled]', 'Determines if the demo app will be launched once the local server is running', asBoolean, defaultStartArgs.demo)
     .option('-s, --static [enabled]', 'Launches the server and application using pre-built files', asBoolean, defaultStartArgs.static)
     .option('-w, --write [enabled]', 'Writes the built files to disk', asBoolean, defaultStartArgs.write)
@@ -200,6 +202,7 @@ async function startTestRunner(type: JestMode, args: CLITestArguments): Promise<
         demo: false,
         static: false,
         write: true,
+        platform: false,
         filter: '',
         fileNames: '',
         runtime: '',
@@ -251,7 +254,7 @@ async function startCommandProcess(args: CLIArguments): Promise<void> {
     }
 
     const server = await createServer();
-    await allowHook(Hook.APP_MIDDLEWARE)(server);
+    await allowHook(Hook.APP_MIDDLEWARE)(server, parsedArgs);
     await createDefaultMiddleware(server, parsedArgs);
     await startServer(server);
     await prepareRuntime(parsedArgs);

@@ -3,6 +3,7 @@ import * as MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import * as webpack from 'webpack';
 import * as ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 
+import {getManifest, RewriteContext} from '../utils/getManifest';
 import {getRootDirectory} from '../utils/getRootDirectory';
 import {getProjectConfig} from '../utils/getProjectConfig';
 import {getProjectPackageJson} from '../utils/getProjectPackageJson';
@@ -150,21 +151,14 @@ export function createConfig(outPath: string, entryPoint: string | webpack.Entry
  * Will be removed once the RVM supports relative paths within app.json files
  */
 export const manifestPlugin = (() => {
-    const {NAME, PORT} = getProjectConfig();
+    const {VERSION} = getProjectConfig();
 
     return new CopyWebpackPlugin([{
         from: getProviderPath(),
         to: '.',
-        transform: (content) => {
-            const config = JSON.parse(content.toString());
-
-            if (typeof process.env.SERVICE_VERSION !== 'undefined' && process.env.SERVICE_VERSION !== '') {
-                config.startup_app.url = `https://cdn.openfin.co/services/openfin/${NAME}/${process.env.SERVICE_VERSION}/provider.html`;
-                config.startup_app.autoShow = false;
-            } else {
-                config.startup_app.url = `http://localhost:${PORT}/provider/provider.html`;
-            }
-
+        transform: (content, path) => {
+            // Run the manifest through 'getManifest', to replace any ${} params
+            const config = getManifest(path, RewriteContext.DEPLOY, {providerVersion: VERSION || 'default'});
             return JSON.stringify(config, null, 4);
         }
     }]);

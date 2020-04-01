@@ -1,4 +1,7 @@
 import {existsSync, readFileSync} from 'fs';
+import {join} from 'path';
+
+import {getRootDirectory} from './getRootDirectory';
 
 /**
  * Shape of the configuration file which is implemented in an extending project.
@@ -60,6 +63,14 @@ export interface Config extends ConfigFile {
      * by the project. See the README for more information.
      */
     IS_SERVICE: boolean;
+
+    /**
+     * The current version number of the project/service.
+     *
+     * This will be populated with the version number in `package.json`, or can be overridden using the `VERSION`
+     * environment variable.
+     */
+    VERSION: string;
 }
 
 /**
@@ -126,6 +137,9 @@ export function getProjectConfig<T extends Config = Config>(): Readonly<T> {
 
         config = {...config, ...userConfig};
     }
+
+    // Read project version
+    config.VERSION = require(join(getRootDirectory(), 'package.json')).version;
 
     // Apply CLI/env overrides
     const {env} = process;
